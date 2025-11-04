@@ -2,9 +2,7 @@ package main
 
 import (
 	"bytes"
-	"embed"
 	"fmt"
-	"image"
 	"image/color"
 	_ "image/png"
 	"log"
@@ -16,17 +14,18 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
-	windowWidth = 480
-	windowHeight = 600
-	boardWidth = 480
-	boardHeight = 480
+	windowWidth = 480 // default 480
+	windowHeight = 600 // default 600
+	boardWidth = 480 // default 480
+	boardHeight = 480 // default 480
 	fontSize    = 15
 	bigFontSize = 100
-	boardSize = 3
-	numSymbolToWin = 3
+	boardSize = 3 // default 3
+	numSymbolToWin = 3 // default 3
 )
 
 type GameState int
@@ -123,14 +122,9 @@ func (g *Game) Update() error {
 }
 
 
-//go:embed images/*
-var imageFS embed.FS
-
 var (
 	normalText  text.Face
 	bigText     text.Face
-	boardImage  *ebiten.Image
-	symbolImage *ebiten.Image
 	gameImage   = ebiten.NewImage(windowWidth, windowHeight)
 )
 
@@ -162,11 +156,36 @@ func keyChangeColor(key ebiten.Key, screen *ebiten.Image) {
 	}
 }
 
+
+// DrawBoardLines draws the board lines on the screen.
+// It draws the vertical and horizontal lines of the board.
+func (g *Game) DrawBoardLines(screen *ebiten.Image) {
+	cellSize := float32(boardWidth) / float32(g.board.size)
+	lineColor := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+	lineThickness := float32(3)
+
+	// Vertical lines
+	for i := 1; i < g.board.size; i++ {
+		x := float32(i) * cellSize
+		vector.StrokeLine(screen, x, 0, x, float32(boardHeight), lineThickness, lineColor, true)
+	}
+
+	// Horizontal lines
+	for i := 1; i < g.board.size; i++ {
+		y := float32(i) * cellSize
+		vector.StrokeLine(screen, 0, y, float32(boardWidth), y, lineThickness, lineColor, true)
+	}
+
+	// Border
+	vector.StrokeRect(screen, 0, 0, float32(boardWidth), float32(boardHeight), lineThickness, lineColor, true)
+}
+
+
 func (g *Game) Draw(screen *ebiten.Image) {
-	screen.DrawImage(boardImage, nil)
+	g.DrawBoardLines(screen)
 	gameImage.Clear()
 
-	// Board Drawing
+	// Board symbols drawing
 	for y := 0; y < g.board.size; y++ {
 		for x := 0; x < g.board.size; x++ {
 			player := g.board.cells[x][y]
@@ -223,31 +242,38 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) DrawSymbol(x, y int, sym string) {
-	imageBytes, err := imageFS.ReadFile(fmt.Sprintf("images/%v.png", sym))
-	if err != nil {
-		log.Fatal(err)
-	}
-	decoded, _, err := image.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		log.Fatal(err)
-	}
-	symbolImage = ebiten.NewImageFromImage(decoded)
-	opSymbol := &ebiten.DrawImageOptions{}
-	opSymbol.GeoM.Translate(float64((160*(x+1)-160)+7), float64((160*(y+1)-160)+7))
+	cellSize := float32(boardWidth) / float32(g.board.size)
+	centerX := float32(x)*cellSize + cellSize/2
+	centerY := float32(y)*cellSize + cellSize/2
+	padding := cellSize * 0.2
+	thickness := cellSize * 0.08
+	col := color.RGBA{255, 255, 255, 255}
 
-	gameImage.DrawImage(symbolImage, opSymbol)
+	switch sym {
+	case "O":
+		// Circle
+		radius := (cellSize / 2) - padding
+		vector.StrokeCircle(gameImage, centerX, centerY, radius, thickness, col, true)
+
+	case "X":
+		// Cross
+		offset := (cellSize / 2) - padding
+		vector.StrokeLine(
+			gameImage,
+			centerX-offset, centerY-offset,
+			centerX+offset, centerY+offset,
+			thickness, col, true,
+		)
+		vector.StrokeLine(
+			gameImage,
+			centerX-offset, centerY+offset,
+			centerX+offset, centerY-offset,
+			thickness, col, true,
+		)
+	}
 }
 
 func (g *Game) Init() {
-	imageBytes, err := imageFS.ReadFile("images/board.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	decoded, _, err := image.Decode(bytes.NewReader(imageBytes))
-	if err != nil {
-		log.Fatal(err)
-	}
-	boardImage = ebiten.NewImageFromImage(decoded)
 	g.Load()
 	g.ResetPoints()
 	g.state = PLAYING
