@@ -10,11 +10,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/fogleman/gg"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 const (
@@ -160,24 +160,35 @@ func keyChangeColor(key ebiten.Key, screen *ebiten.Image) {
 // DrawBoardLines draws the board lines on the screen.
 // It draws the vertical and horizontal lines of the board.
 func (g *Game) DrawBoardLines(screen *ebiten.Image) {
-	cellSize := float32(boardWidth) / float32(g.board.size)
-	lineColor := color.RGBA{R: 255, G: 255, B: 255, A: 255}
-	lineThickness := float32(3)
+	cellSize := float64(boardWidth) / float64(g.board.size)
+	lineThickness := 3.0
+
+	// Create a gg context
+	dc := gg.NewContext(boardWidth, boardHeight)
+	dc.SetRGB(1, 1, 1) // White color
+	dc.SetLineWidth(lineThickness)
 
 	// Vertical lines
 	for i := 1; i < g.board.size; i++ {
-		x := float32(i) * cellSize
-		vector.StrokeLine(screen, x, 0, x, float32(boardHeight), lineThickness, lineColor, true)
+		x := float64(i) * cellSize
+		dc.DrawLine(x, 0, x, float64(boardHeight))
+		dc.Stroke()
 	}
 
 	// Horizontal lines
 	for i := 1; i < g.board.size; i++ {
-		y := float32(i) * cellSize
-		vector.StrokeLine(screen, 0, y, float32(boardWidth), y, lineThickness, lineColor, true)
+		y := float64(i) * cellSize
+		dc.DrawLine(0, y, float64(boardWidth), y)
+		dc.Stroke()
 	}
 
 	// Border
-	vector.StrokeRect(screen, 0, 0, float32(boardWidth), float32(boardHeight), lineThickness, lineColor, true)
+	dc.DrawRectangle(0, 0, float64(boardWidth), float64(boardHeight))
+	dc.Stroke()
+
+	// Convert gg image to ebiten image
+	ebitenImg := ebiten.NewImageFromImage(dc.Image())
+	screen.DrawImage(ebitenImg, nil)
 }
 
 
@@ -242,35 +253,37 @@ func (g *Game) Draw(screen *ebiten.Image) {
 }
 
 func (g *Game) DrawSymbol(x, y int, sym string) {
-	cellSize := float32(boardWidth) / float32(g.board.size)
-	centerX := float32(x)*cellSize + cellSize/2
-	centerY := float32(y)*cellSize + cellSize/2
+	cellSize := float64(boardWidth) / float64(g.board.size)
+	centerX := float64(x)*cellSize + cellSize/2
+	centerY := float64(y)*cellSize + cellSize/2
 	padding := cellSize * 0.2
 	thickness := cellSize * 0.08
-	col := color.RGBA{255, 255, 255, 255}
+
+	// Create a gg context for the entire board
+	dc := gg.NewContext(boardWidth, boardHeight)
+	dc.SetRGB(1, 1, 1) // White color
+	dc.SetLineWidth(thickness)
 
 	switch sym {
 	case "O":
 		// Circle
 		radius := (cellSize / 2) - padding
-		vector.StrokeCircle(gameImage, centerX, centerY, radius, thickness, col, true)
+		dc.DrawCircle(centerX, centerY, radius)
+		dc.Stroke()
 
 	case "X":
 		// Cross
 		offset := (cellSize / 2) - padding
-		vector.StrokeLine(
-			gameImage,
-			centerX-offset, centerY-offset,
-			centerX+offset, centerY+offset,
-			thickness, col, true,
-		)
-		vector.StrokeLine(
-			gameImage,
-			centerX-offset, centerY+offset,
-			centerX+offset, centerY-offset,
-			thickness, col, true,
-		)
+		dc.DrawLine(centerX-offset, centerY-offset, centerX+offset, centerY+offset)
+		dc.Stroke()
+		dc.DrawLine(centerX-offset, centerY+offset, centerX+offset, centerY-offset)
+		dc.Stroke()
 	}
+
+	// Convert gg image to ebiten image and draw it
+	symbolImg := ebiten.NewImageFromImage(dc.Image())
+	op := &ebiten.DrawImageOptions{}
+	gameImage.DrawImage(symbolImg, op)
 }
 
 func (g *Game) Init() {
