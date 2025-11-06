@@ -2,10 +2,17 @@ package main
 
 import "fmt"
 
+const (
+	minBoardSize       = 3 // taille minimale d’un plateau valide
+	minSymbolsToWin    = 3 // nombre minimum de symboles pour gagner
+	emptyCellCheckStep = 1 // incrément utilisé dans les boucles de vérification
+)
+
+// Board représente le plateau de jeu.
 type Board struct {
-	size int // size of the board
-	cells [][]*Player // 2D array of pointers to players
-	numSymbolToWin int // number of symbols in a row needed to win
+	size           int         // size of the board
+	cells          [][]*Player // 2D array of pointers to players
+	numSymbolToWin int         // number of symbols in a row needed to win
 }
 
 // NewBoard creates a new board of the specified size, initializing all cells to nil.
@@ -16,9 +23,17 @@ type Board struct {
 // _ | _ | _
 // _ | _ | _
 func NewBoard(size int, numSymbolToWin int) *Board {
+	// Validation des paramètres pour éviter un plateau incohérent
+	if size < minBoardSize {
+		size = minBoardSize
+	}
+	if numSymbolToWin < minSymbolsToWin || numSymbolToWin > size {
+		numSymbolToWin = minSymbolsToWin
+	}
+
 	board := &Board{
-		size: size,
-		cells: make([][]*Player, size),
+		size:           size,
+		cells:          make([][]*Player, size),
 		numSymbolToWin: numSymbolToWin,
 	}
 
@@ -29,13 +44,14 @@ func NewBoard(size int, numSymbolToWin int) *Board {
 	return board
 }
 
+// play effectue un coup sur le plateau.
 func (b *Board) play(player *Player, row, col int) error {
 	if row < 0 || row >= b.size || col < 0 || col >= b.size {
-		return fmt.Errorf("invalid move")
+		return fmt.Errorf("invalid move: position (%d,%d) out of bounds", row, col)
 	}
 
 	if b.cells[row][col] != nil {
-		return fmt.Errorf("square already occupied")
+		return fmt.Errorf("square (%d,%d) already occupied", row, col)
 	}
 
 	b.cells[row][col] = player
@@ -46,9 +62,10 @@ func (b *Board) play(player *Player, row, col int) error {
 // It returns the winning player if there is one, or nil otherwise.
 // Example usage:
 // winner := board.CheckWin()
-// if winner != nil {
-//     fmt.Printf("%s wins!\n", winner.Name())
-// }
+//
+//	if winner != nil {
+//	    fmt.Printf("%s wins!\n", winner.Name())
+//	}
 func (b *Board) CheckWin() *Player {
 	// Check rows
 	for row := 0; row < b.size; row++ {
@@ -58,7 +75,7 @@ func (b *Board) CheckWin() *Player {
 				continue
 			}
 			win := true
-			for i := 1; i < b.numSymbolToWin; i++ {
+			for i := emptyCellCheckStep; i < b.numSymbolToWin; i += emptyCellCheckStep {
 				if b.cells[row][col+i] != first {
 					win = false
 					break
@@ -78,7 +95,7 @@ func (b *Board) CheckWin() *Player {
 				continue
 			}
 			win := true
-			for i := 1; i < b.numSymbolToWin; i++ {
+			for i := emptyCellCheckStep; i < b.numSymbolToWin; i += emptyCellCheckStep {
 				if b.cells[row+i][col] != first {
 					win = false
 					break
@@ -98,7 +115,7 @@ func (b *Board) CheckWin() *Player {
 				continue
 			}
 			win := true
-			for i := 1; i < b.numSymbolToWin; i++ {
+			for i := emptyCellCheckStep; i < b.numSymbolToWin; i += emptyCellCheckStep {
 				if b.cells[row+i][col+i] != first {
 					win = false
 					break
@@ -112,13 +129,13 @@ func (b *Board) CheckWin() *Player {
 
 	// Check anti-diagonals
 	for row := 0; row <= b.size-b.numSymbolToWin; row++ {
-		for col := b.numSymbolToWin - 1; col < b.size; col++ {
+		for col := b.numSymbolToWin - emptyCellCheckStep; col < b.size; col++ {
 			first := b.cells[row][col]
 			if first == nil {
 				continue
 			}
 			win := true
-			for i := 1; i < b.numSymbolToWin; i++ {
+			for i := emptyCellCheckStep; i < b.numSymbolToWin; i += emptyCellCheckStep {
 				if b.cells[row+i][col-i] != first {
 					win = false
 					break
@@ -137,9 +154,10 @@ func (b *Board) CheckWin() *Player {
 // It returns true if there are no empty cells left, false otherwise.
 // Example usage:
 // isDraw := board.CheckDraw()
-// if isDraw {
-//     fmt.Println("It's a draw!")
-// }
+//
+//	if isDraw {
+//	    fmt.Println("It's a draw!")
+//	}
 func (b *Board) CheckDraw() bool {
 	for _, row := range b.cells {
 		for _, square := range row {
