@@ -1,6 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"image/color"
+
+	"github.com/fogleman/gg"
+	"github.com/hajimehoshi/ebiten/v2"
+)
 
 type Board struct {
 	size int // size of the board
@@ -149,4 +155,39 @@ func (b *Board) CheckDraw() bool {
 		}
 	}
 	return true
+}
+
+// GenerateImage generates an image of the board.
+// It returns a ebiten.Image representing the board. it use the gg library to draw the board.
+// Example usage:
+// image := board.GenerateImage()
+// ebitenutil.DrawImage(screen, image, nil)
+func (b *Board) GenerateImage() *ebiten.Image {
+	cellSize := float64(boardWidth) / float64(b.size)
+
+	// Create a gg context
+	dc := gg.NewContext(boardWidth, boardHeight)
+	dc.SetColor(color.White)
+	dc.SetLineWidth(boardLineThickness)
+
+	// Vertical lines
+	for i := 1; i < b.size; i++ {
+		x := float64(i) * cellSize
+		dc.DrawLine(x, 0, x, float64(boardHeight))
+		dc.Stroke()
+	}
+
+	// Horizontal lines
+	for i := 1; i < b.size; i++ {
+		y := float64(i) * cellSize
+		dc.DrawLine(0, y, float64(boardWidth), y)
+		dc.Stroke()
+	}
+
+	// Border
+	dc.DrawRectangle(0, 0, float64(boardWidth), float64(boardHeight))
+	dc.Stroke()
+
+	// Convert gg image to ebiten image
+	return ebiten.NewImageFromImage(dc.Image())
 }

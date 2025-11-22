@@ -10,7 +10,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/fogleman/gg"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -22,6 +21,7 @@ const (
 	windowHeight = 600 // default 600
 	boardWidth = 480 // default 480
 	boardHeight = 480 // default 480
+	boardLineThickness = 3.0
 	fontSize    = 15
 	bigFontSize = 100
 	boardSize = 3 // default 3
@@ -37,8 +37,13 @@ const (
 )
 
 type Player struct {
-	Symbol string
-	Points int
+	symbol *Symbol
+	points int
+	color color.Color
+}
+
+type GameRessources struct {
+	boardImage *ebiten.Image
 }
 
 type Game struct {
@@ -47,12 +52,14 @@ type Game struct {
 	players       []*Player
 	currentPlayer *Player
 	winner        *Player
+	resources     *GameRessources
 }
 
 func (g *Game) Start() {
 	g.state = PLAYING
 	g.currentPlayer = g.players[0]
 	g.winner = nil
+	g.resources = &GameRessources{}
 }
 
 func (g *Game) NextPlayer() {
@@ -74,14 +81,14 @@ func (g *Game) HandleDraw() {
 }
 
 func (g *Game) HandleWin(winner *Player) {
-	winner.Points++
+	winner.points++
 	g.winner = winner
 	g.state = GAME_END
 }
 
 func (g *Game) ResetPoints() {
 	for _, player := range g.players {
-		player.Points = 0
+		player.points = 0
 	}
 }
 
@@ -156,44 +163,9 @@ func keyChangeColor(key ebiten.Key, screen *ebiten.Image) {
 	}
 }
 
-
-// DrawBoardLines draws the board lines on the screen.
-// It draws the vertical and horizontal lines of the board.
-func (g *Game) DrawBoardLines(screen *ebiten.Image) {
-	cellSize := float64(boardWidth) / float64(g.board.size)
-	lineThickness := 3.0
-
-	// Create a gg context
-	dc := gg.NewContext(boardWidth, boardHeight)
-	dc.SetRGB(1, 1, 1) // White color
-	dc.SetLineWidth(lineThickness)
-
-	// Vertical lines
-	for i := 1; i < g.board.size; i++ {
-		x := float64(i) * cellSize
-		dc.DrawLine(x, 0, x, float64(boardHeight))
-		dc.Stroke()
-	}
-
-	// Horizontal lines
-	for i := 1; i < g.board.size; i++ {
-		y := float64(i) * cellSize
-		dc.DrawLine(0, y, float64(boardWidth), y)
-		dc.Stroke()
-	}
-
-	// Border
-	dc.DrawRectangle(0, 0, float64(boardWidth), float64(boardHeight))
-	dc.Stroke()
-
-	// Convert gg image to ebiten image
-	ebitenImg := ebiten.NewImageFromImage(dc.Image())
-	screen.DrawImage(ebitenImg, nil)
-}
-
-
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.DrawBoardLines(screen)
+	// Draw board
+	screen.DrawImage(g.resources.boardImage, nil)
 	gameImage.Clear()
 
 	// Board symbols drawing
@@ -201,7 +173,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		for x := 0; x < g.board.size; x++ {
 			player := g.board.cells[x][y]
 			if player != nil {
-				g.DrawSymbol(x, y, player.Symbol)
+				g.DrawSymbol(x, y, player)
 			}
 		}
 	}
@@ -221,7 +193,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	keyChangeColor(ebiten.KeyR, screen)
 
 	// Score
-	msgOX := fmt.Sprintf("O: %v | X: %v", g.players[1].Points, g.players[0].Points)
+	msgOX := fmt.Sprintf("O: %v | X: %v", g.players[1].points, g.players[0].points)
 	msgOXOptions := &text.DrawOptions{}
 	msgOXOptions.GeoM.Translate(windowWidth/2, windowHeight-30)
 	msgOXOptions.PrimaryAlign = text.AlignCenter
@@ -229,7 +201,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	text.Draw(screen, msgOX, normalText, msgOXOptions)
 
 	// Show Cursor
-	msg := fmt.Sprintf("%v", g.currentPlayer.Symbol)
+	msg := fmt.Sprintf("%v", g.currentPlayer)
 	msgOptions := &text.DrawOptions{}
 	msgOptions.GeoM.Translate(float64(mx-15), float64(my-15))
 	msgOptions.ColorScale.ScaleWithColor(color.White)
@@ -239,7 +211,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.state == GAME_END {
 		var msgWin string
 		if g.winner != nil {
-			msgWin = fmt.Sprintf("%v wins!", g.winner.Symbol)
+			msgWin = fmt.Sprintf("%v wins!", g.winner)
 		} else {
 			msgWin = "It's a draw!"
 		}
@@ -252,38 +224,26 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
-func (g *Game) DrawSymbol(x, y int, sym string) {
-	cellSize := float64(boardWidth) / float64(g.board.size)
-	centerX := float64(x)*cellSize + cellSize/2
-	centerY := float64(y)*cellSize + cellSize/2
-	padding := cellSize * 0.2
-	thickness := cellSize * 0.08
+func (g *Game) DrawSymbol(gridX, gridY int, p *Player) {
+    cellSize := float64(boardWidth) / float64(g.board.size)
 
-	// Create a gg context for the entire board
-	dc := gg.NewContext(boardWidth, boardHeight)
-	dc.SetRGB(1, 1, 1) // White color
-	dc.SetLineWidth(thickness)
+    // Padding (15% de la taille de la cellule)
+    padding := cellSize * 0.1
+    usableSize := cellSize - 2*padding
 
-	switch sym {
-	case "O":
-		// Circle
-		radius := (cellSize / 2) - padding
-		dc.DrawCircle(centerX, centerY, radius)
-		dc.Stroke()
+    // Facteur d'échelle pour que l'image tienne dans la zone utile
+    scale := usableSize / float64(imageSize)
 
-	case "X":
-		// Cross
-		offset := (cellSize / 2) - padding
-		dc.DrawLine(centerX-offset, centerY-offset, centerX+offset, centerY+offset)
-		dc.Stroke()
-		dc.DrawLine(centerX-offset, centerY+offset, centerX+offset, centerY-offset)
-		dc.Stroke()
-	}
+    // Position centrée et padding intégré
+    px := float64(gridX)*cellSize + padding
+    py := float64(gridY)*cellSize + padding
 
-	// Convert gg image to ebiten image and draw it
-	symbolImg := ebiten.NewImageFromImage(dc.Image())
-	op := &ebiten.DrawImageOptions{}
-	gameImage.DrawImage(symbolImg, op)
+    op := &ebiten.DrawImageOptions{}
+    op.Filter = ebiten.FilterLinear
+    op.GeoM.Scale(scale, scale)
+    op.GeoM.Translate(px, py)
+
+    gameImage.DrawImage(p.symbol.image, op)
 }
 
 func (g *Game) Init() {
@@ -297,9 +257,11 @@ func (g *Game) Load() {
 	g.state = INIT
 	g.board = NewBoard(boardSize, numSymbolToWin)
 	g.players = []*Player{
-		{Symbol: "X", Points: 0},
-		{Symbol: "O", Points: 0},
+		{symbol: newSymbol(CROSS), points: 0},
+		{symbol: newSymbol(CIRCLE), points: 0},
 	}
+	g.resources = &GameRessources{}
+	g.resources.boardImage = g.board.GenerateImage()
 	g.currentPlayer = g.players[0]
 	g.winner = nil
 }
