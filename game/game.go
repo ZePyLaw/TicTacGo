@@ -1,6 +1,7 @@
 package game
 
 import (
+	"GoTicTacToe/assets"
 	"image/color"
 )
 
@@ -34,8 +35,8 @@ func (g *Game) ResetHard() {
 	g.Board = NewBoard(3, 3)
 
 	g.Players = []*Player{
-		NewPlayer(newSymbol(CIRCLE), color.RGBA{R: 255, G: 0, B: 0, A: 255}),
-		NewPlayer(newSymbol(CROSS), color.RGBA{R: 0, G: 0, B: 255, A: 255}),
+		NewPlayer(assets.NewSymbol(assets.CircleSymbol), color.RGBA{R: 255, G: 0, B: 0, A: 255}),
+		NewPlayer(assets.NewSymbol(assets.CrossSymbol), color.RGBA{R: 0, G: 0, B: 255, A: 255}),
 	}
 
 	g.Current = g.Players[0]

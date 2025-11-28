@@ -1,6 +1,10 @@
 package screens
 
 import (
+	"fmt"
+	"image"
+
+	"github.com/ebitengine/debugui"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -18,13 +22,11 @@ type ScreenHost interface {
 type screenHost struct {
 	width, height int
 	current       Screen
+	debugui      debugui.DebugUI
 }
 
 func NewScreenHost(width, height int) *screenHost {
-	return &screenHost{
-		width:  width,
-		height: height,
-	}
+	return &screenHost{}
 }
 
 func (h *screenHost) SetScreen(s Screen) {
@@ -32,6 +34,17 @@ func (h *screenHost) SetScreen(s Screen) {
 }
 
 func (h *screenHost) Update() error {
+	if _, err := h.debugui.Update(func(ctx *debugui.Context) error {
+		ctx.Window("Debug", image.Rect(0, 0, 100, 100), func(layout debugui.ContainerLayout) {
+			msgTps := fmt.Sprintf("TPS: %.2f", ebiten.ActualTPS())
+			msgFps := fmt.Sprintf("FPS: %.2f", ebiten.ActualFPS())
+			ctx.Text(msgTps)
+			ctx.Text(msgFps)
+		})
+		return nil
+	}); err != nil {
+		return err
+	}
 	if h.current != nil {
 		return h.current.Update()
 	}
@@ -39,11 +52,12 @@ func (h *screenHost) Update() error {
 }
 
 func (h *screenHost) Draw(screen *ebiten.Image) {
+	h.debugui.Draw(screen)
 	if h.current != nil {
 		h.current.Draw(screen)
 	}
 }
 
-func (h *screenHost) Layout(_, _ int) (int, int) {
-	return h.width, h.height
+func (h *screenHost) Layout(outsideWidth, outsideHeight int) (int, int) {
+    return outsideWidth, outsideHeight
 }

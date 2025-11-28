@@ -85,48 +85,10 @@ func (gs *GameScreen) Draw(screen *ebiten.Image) {
 	gs.boardView.Draw(screen)
 	gs.scoreView.Draw(screen)
 
-	// HUD elements
-	gs.drawDebug(screen)
-	gs.drawScore(screen)
-
 	// Display win/draw message if needed
 	if gs.game.State == game.GAME_END {
 		gs.drawEndMessage(screen)
 	}
-}
-
-//
-// --- HUD Drawing Helpers ---
-//
-
-// drawDebug displays FPS, TPS, and mouse position for debugging.
-func (gs *GameScreen) drawDebug(screen *ebiten.Image) {
-	mx, my := ebiten.CursorPosition()
-	msg := fmt.Sprintf(
-		"TPS: %.2f | FPS: %.2f | Mouse: %d,%d",
-		ebiten.ActualTPS(), ebiten.ActualFPS(), mx, my,
-	)
-
-	opts := &text.DrawOptions{}
-	opts.GeoM.Translate(5, 560) // Adjust if window size changes
-	opts.ColorScale.ScaleWithColor(color.White)
-
-	text.Draw(screen, msg, assets.NormalFont, opts)
-}
-
-// drawScore displays the player scores for O and X.
-func (gs *GameScreen) drawScore(screen *ebiten.Image) {
-	msg := fmt.Sprintf("O: %d | X: %d",
-		gs.game.Players[1].Points,
-		gs.game.Players[0].Points,
-	)
-
-	opts := &text.DrawOptions{}
-	opts.PrimaryAlign = text.AlignCenter
-	opts.GeoM.Translate(320, 570) // Centered horizontally for a 640px window
-	opts.ColorScale.ScaleWithColor(color.White)
-
-	text.Draw(screen, msg, assets.NormalFont, opts)
 }
 
 // drawEndMessage displays a centered win/draw message at the end of a game.
