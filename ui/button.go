@@ -12,10 +12,10 @@ import (
 // Button represents a UI button with a label, hover animation, and click handler.
 // It embeds Widget, so all Widget fields and methods are promoted and accessible directly.
 type Button struct {
-	Widget                // Embedded base widget
-	Label    string       // Text displayed on the button
-	hover    float64      // Hover animation parameter (0–1)
-	onClick  func()       // Callback executed when the button is clicked
+	Widget                  // Embedded base widget
+	Label            string // Text displayed on the button
+	onClick          func() // Callback executed when the button is clicked
+	*utils.Hoverable        // Embedded hoverable component
 }
 
 // NewButton creates and returns a new Button instance.
@@ -45,38 +45,19 @@ func NewButton(
 			image:   bg, // internal widget image
 			Style:   style,
 		},
-		Label:   label,
-		onClick: onClick,
-		hover:   0,
+		Label:     label,
+		onClick:   onClick,
+		Hoverable: utils.NewHoverable(style.HoverMode),
 	}
 }
 
 // Update handles hover detection, hover animation, and click events.
 func (b *Button) Update() {
-	mx, my := ebiten.CursorPosition()
 	x, y := b.AbsPosition()
-
-	// Hover detection: check if cursor is inside the button bounds
-	hover := float64(mx) >= x &&
-		float64(mx) <= x+b.Width &&
-		float64(my) >= y &&
-		float64(my) <= y+b.Height
-
-	// Smooth hover animation (0 → not hovered, 1 → fully hovered)
-	if hover {
-		b.hover += 0.1
-		if b.hover > 1 {
-			b.hover = 1
-		}
-	} else {
-		b.hover -= 0.1
-		if b.hover < 0 {
-			b.hover = 0
-		}
-	}
+	b.Hoverable.Update(x, y, b.Width, b.Height)
 
 	// Handle click events
-	if hover && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
+	if b.IsHovered() && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		if b.onClick != nil {
 			b.onClick()
 		}
@@ -92,7 +73,7 @@ func (b *Button) Draw(screen *ebiten.Image) {
 	op.GeoM.Translate(x, y)
 
 	// Apply interactive hover color effect
-	utils.ApplyHoverColor(op, b.Style, b.hover)
+	b.ApplyHoverColor(op, b.Style)
 
 	screen.DrawImage(b.image, op)
 
