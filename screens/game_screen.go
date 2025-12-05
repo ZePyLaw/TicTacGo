@@ -95,7 +95,7 @@ func (gs *GameScreen) Draw(screen *ebiten.Image) {
 func (gs *GameScreen) drawEndMessage(screen *ebiten.Image) {
 	var msg string
 	if gs.game.Winner != nil {
-		msg = fmt.Sprintf("%s wins!", gs.game.Winner.Symbol)
+		msg = fmt.Sprintf("%s wins!", gs.game.Winner.Symbol.Type)
 	} else {
 		msg = "It's a draw!"
 	}
@@ -104,7 +104,7 @@ func (gs *GameScreen) drawEndMessage(screen *ebiten.Image) {
 	opts.PrimaryAlign = text.AlignCenter
 	opts.SecondaryAlign = text.AlignCenter
 
-	sw, sh := ebiten.WindowSize()
+	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
 	opts.GeoM.Translate(float64(sw)/2, float64(sh)/2)
 
 	opts.ColorScale.ScaleWithColor(color.RGBA{255, 255, 0, 255})

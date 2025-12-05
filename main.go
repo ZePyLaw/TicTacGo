@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	windowWidth  = 900
-	windowHeight = 900
+	windowWidth  = 1920 / 2
+	windowHeight = 1080 / 2
 )
 
 func main() {

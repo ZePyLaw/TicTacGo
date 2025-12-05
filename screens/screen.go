@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"GoTicTacToe/ui"
 	"fmt"
 	"image"
 
@@ -22,11 +23,15 @@ type ScreenHost interface {
 type screenHost struct {
 	width, height int
 	current       Screen
-	debugui      debugui.DebugUI
+	debugui       debugui.DebugUI
 }
 
 func NewScreenHost(width, height int) *screenHost {
-	return &screenHost{}
+	ui.UpdateScreenSize(width, height)
+	return &screenHost{
+		width:  width,
+		height: height,
+	}
 }
 
 func (h *screenHost) SetScreen(s Screen) {
@@ -52,6 +57,10 @@ func (h *screenHost) Update() error {
 }
 
 func (h *screenHost) Draw(screen *ebiten.Image) {
+	w, hgt := screen.Bounds().Dx(), screen.Bounds().Dy()
+	if w != 0 && hgt != 0 {
+		ui.UpdateScreenSize(w, hgt)
+	}
 	h.debugui.Draw(screen)
 	if h.current != nil {
 		h.current.Draw(screen)
@@ -59,5 +68,10 @@ func (h *screenHost) Draw(screen *ebiten.Image) {
 }
 
 func (h *screenHost) Layout(outsideWidth, outsideHeight int) (int, int) {
-    return outsideWidth, outsideHeight
+	if outsideWidth > 0 && outsideHeight > 0 {
+		h.width = outsideWidth
+		h.height = outsideHeight
+	}
+	ui.UpdateScreenSize(h.width, h.height)
+	return h.width, h.height
 }

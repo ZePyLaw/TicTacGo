@@ -20,7 +20,11 @@ type Widget struct {
 }
 
 func (w *Widget) AbsPosition() (float64, float64) {
-	sw, sh := ebiten.WindowSize()
+	sw, sh := currentScreenSize()
+	if sw == 0 || sh == 0 {
+		// Fallback to the window size for environments where UpdateScreenSize wasn't called yet.
+		sw, sh = ebiten.WindowSize()
+	}
 	return utils.ComputeAnchoredPosition(
 		w.Anchor,
 		w.OffsetX, w.OffsetY,
