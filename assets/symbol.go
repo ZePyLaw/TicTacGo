@@ -12,6 +12,8 @@ type SymbolType int
 const (
 	CrossSymbol SymbolType = iota
 	CircleSymbol
+	TriangleSymbol
+	SquareSymbol
 )
 
 const (
@@ -38,6 +40,17 @@ func generateSymbol(symbolType SymbolType) *ebiten.Image {
 
 	case CircleSymbol:
 		dc.DrawCircle(imageSize/2, imageSize/2, imageSize/2-lineThickness/2)
+		dc.Stroke()
+
+	case TriangleSymbol:
+		dc.MoveTo(imageSize/2, lineThickness/2)
+		dc.LineTo(imageSize-lineThickness/2, imageSize-lineThickness/2)
+		dc.LineTo(lineThickness/2, imageSize-lineThickness/2)
+		dc.ClosePath()
+		dc.Stroke()
+
+	case SquareSymbol:
+		dc.DrawRectangle(lineThickness/2, lineThickness/2, imageSize-lineThickness, imageSize-lineThickness)
 		dc.Stroke()
 	}
 
