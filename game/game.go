@@ -8,8 +8,8 @@ import (
 type GameState int
 
 const (
-	PLAYING GameState = iota // A game is currently in progress
-	GAME_END                 // The game has ended (win or draw)
+	PLAYING  GameState = iota // A game is currently in progress
+	GAME_END                  // The game has ended (win or draw)
 )
 
 // Game contains all data and logic required to run a match.
@@ -120,4 +120,26 @@ func (g *Game) CheckDraw() bool {
 		return true
 	}
 	return false
+}
+
+func (b *Board) AvailableMoves() []Move {
+	moves := []Move{}
+	for x := 0; x < b.Size; x++ {
+		for y := 0; y < b.Size; y++ {
+			if b.Cells[x][y] == nil {
+				moves = append(moves, Move{X: x, Y: y})
+			}
+		}
+	}
+	return moves
+}
+
+func (b *Board) Clone() *Board {
+	clone := NewBoard(b.Size, b.ToWin)
+	for x := 0; x < b.Size; x++ {
+		for y := 0; y < b.Size; y++ {
+			clone.Cells[x][y] = b.Cells[x][y]
+		}
+	}
+	return clone
 }
