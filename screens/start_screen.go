@@ -31,6 +31,34 @@ func NewStartScreen(h ScreenHost) *StartScreen {
 		ui.NewButton("Multiplayer", buttonWidth/2+10, 200.0, uiutils.AnchorCenter, buttonWidth, buttonHeight, buttonRadius, uiutils.TransparentWidgetStyle, func() {}),
 	}
 
+		ui.NewButton("Local (2 Players)", 0, -80, uiutils.AnchorCenter,
+			buttonWidth, buttonHeight, buttonRadius, uiutils.DefaultWidgetStyle,
+			func() {
+				s.host.SetScreen(NewGameScreen(s.host, GameConfig{
+					Mode: LocalVsLocal,
+				}))
+			},
+		),
+
+		ui.NewButton("Play vs AI", 0, 0, uiutils.AnchorCenter,
+			buttonWidth, buttonHeight, buttonRadius,
+			uiutils.DefaultWidgetStyle,
+			func() {
+				h.SetScreen(NewAIScreen(h, GameConfig{
+					Mode: LocalVsAI,
+				}))
+			},
+		),
+
+		ui.NewButton(
+			"Multiplayer",
+			0, 80,
+			uiutils.AnchorCenter,
+			buttonWidth, buttonHeight, buttonRadius,
+			uiutils.TransparentWidgetStyle,
+			func() {},
+		),
+	}
 	return s
 }
 

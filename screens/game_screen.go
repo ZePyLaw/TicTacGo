@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"GoTicTacToe/ai_models"
 	"GoTicTacToe/assets"
 	"GoTicTacToe/game"
 	"GoTicTacToe/ui"
@@ -21,16 +22,19 @@ type GameScreen struct {
 	game      *game.Game
 	boardView *ui.BoardView
 	scoreView *ui.ScoreView
+	players   [2]*game.Player
+	aimodels  [2]ai_models.AIModel
 }
 
 const (
-	boardPixelSize = 480.0 // Board visual size in pixels
-	scorePixelWidth = 300
+	boardPixelSize   = 480.0 // Board visual size in pixels
+	scorePixelWidth  = 300
 	scorePixelHeight = 80
 )
 
 // NewGameScreen initializes a new GameScreen with a fresh game and board view.
-func NewGameScreen(h ScreenHost) *GameScreen {
+func NewGameScreen(h ScreenHost, cfg GameConfig) *GameScreen {
+
 	// Create game logic
 	g := game.NewGame()
 
@@ -39,11 +43,21 @@ func NewGameScreen(h ScreenHost) *GameScreen {
 		game: g,
 	}
 
+	// Store player pointers
+	gs.players[0] = gs.game.Players[0]
+	gs.players[1] = gs.game.Players[1]
+
+	// Apply configuration
+	if cfg.Mode == LocalVsAI && cfg.AIModel != nil {
+		gs.players[1].IsAI = true
+		gs.aimodels[1] = cfg.AIModel
+	}
+
 	gs.scoreView = ui.NewScoreView(g, scorePixelWidth, scorePixelHeight, uiutils.DefaultWidgetStyle)
 
 	// Create the interactive board view with callback on cell click
 	gs.boardView = ui.NewBoardView(
-		g.Board,        // Logical board reference
+		g.Board, // Logical board reference
 		0, 0,
 		boardPixelSize, // Pixel size
 		uiutils.DefaultWidgetStyle,
@@ -57,7 +71,31 @@ func NewGameScreen(h ScreenHost) *GameScreen {
 
 // Update processes input and updates UI components.
 func (gs *GameScreen) Update() error {
-	// Handle board interactions
+
+	// Handle AI board interactions
+	if gs.game.State == game.PLAYING {
+		current := gs.game.Current
+		if current.IsAI {
+
+			// Find index of current player
+			var idx int
+			if gs.players[0] == current {
+				idx = 0
+			} else {
+				idx = 1
+			}
+
+			model := gs.aimodels[idx]
+			if model != nil {
+				x, y := model.NextMove(gs.game.Board, current, gs.players)
+				gs.game.PlayMove(x, y)
+			}
+
+			return nil // skip human input this frame
+		}
+	}
+
+	// Handle Human board interactions
 	gs.boardView.Update()
 
 	// Reset the game if it's finished and the user clicks anywhere
