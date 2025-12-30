@@ -4,7 +4,13 @@ import "GoTicTacToe/game"
 
 type MinimaxAI struct{}
 
-func (MinimaxAI) NextMove(board *game.Board, me *game.Player, players [2]*game.Player) (int, int) {
+func (MinimaxAI) NextMove(board *game.Board, me *game.Player, players []*game.Player) (int, int) {
+	// This implementation is tailored for 2-player games. If we have more,
+	// fallback to a random move to avoid undefined behaviour.
+	if len(players) != 2 {
+		return RandomAI{}.NextMove(board, me, players)
+	}
+
 	bestScore := -9999
 	bestMove := game.Move{X: -1, Y: -1}
 
@@ -23,7 +29,7 @@ func (MinimaxAI) NextMove(board *game.Board, me *game.Player, players [2]*game.P
 	return bestMove.X, bestMove.Y
 }
 
-func minimax(board *game.Board, me *game.Player, players [2]*game.Player, maximizing bool) int {
+func minimax(board *game.Board, me *game.Player, players []*game.Player, maximizing bool) int {
 	winner := board.CheckWin()
 	if winner == me {
 		return +1

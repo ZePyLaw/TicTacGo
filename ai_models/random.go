@@ -7,7 +7,7 @@ import (
 
 type RandomAI struct{}
 
-func (RandomAI) NextMove(board *game.Board, me *game.Player, players [2]*game.Player) (int, int) {
+func (RandomAI) NextMove(board *game.Board, me *game.Player, players []*game.Player) (int, int) {
 	moves := board.AvailableMoves()
 	if len(moves) == 0 {
 		return -1, -1

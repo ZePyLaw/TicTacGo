@@ -48,7 +48,7 @@ var TransparentWidgetStyle = WidgetStyle{
 
 var NormalWidgetStyle = WidgetStyle{
 	BackgroundNormal: color.RGBA{64, 92, 245, 100},
-	BackgroundHover:  color.RGBA{43,61,163, 255},
+	BackgroundHover:  color.RGBA{43, 61, 163, 255},
 
 	TextColor: color.White,
 
@@ -69,4 +69,17 @@ var DangerWidgetStyle = WidgetStyle{
 	BorderWidth: 2,
 
 	HoverMode: HoverSolid,
+}
+
+// SuccessWidgetStyle is the style for positive/confirm actions (e.g., ready).
+var SuccessWidgetStyle = WidgetStyle{
+	BackgroundNormal: color.RGBA{40, 170, 80, 255},
+	BackgroundHover:  color.RGBA{30, 140, 60, 255},
+
+	TextColor: color.White,
+
+	BorderColor: color.RGBA{0, 80, 0, 255},
+	BorderWidth: 2,
+
+	HoverMode: HoverColorLerp,
 }

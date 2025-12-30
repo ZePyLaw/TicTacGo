@@ -77,6 +77,12 @@ func (b *Button) Draw(screen *ebiten.Image) {
 	b.DrawAt(screen, rect.X, rect.Y)
 }
 
+// SetStyle updates the button style and rebuilds its background.
+func (b *Button) SetStyle(style utils.WidgetStyle, radius float64) {
+	b.Style = style
+	b.image = utils.CreateRoundedRect(int(b.Width), int(b.Height), radius, style.BackgroundNormal)
+}
+
 // DrawAt renders the button at an explicit position without recomputing layout.
 // Useful when nesting the button inside a container that manages its own origin.
 func (b *Button) DrawAt(screen *ebiten.Image, x, y float64) {
