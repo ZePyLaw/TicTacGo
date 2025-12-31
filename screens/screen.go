@@ -21,17 +21,12 @@ type ScreenHost interface {
 }
 
 type screenHost struct {
-	width, height int
 	current       Screen
 	debugui       debugui.DebugUI
 }
 
-func NewScreenHost(width, height int) *screenHost {
-	ui.UpdateScreenSize(width, height)
-	return &screenHost{
-		width:  width,
-		height: height,
-	}
+func NewScreenHost() *screenHost {
+	return &screenHost{}
 }
 
 func (h *screenHost) SetScreen(s Screen) {
@@ -68,10 +63,6 @@ func (h *screenHost) Draw(screen *ebiten.Image) {
 }
 
 func (h *screenHost) Layout(outsideWidth, outsideHeight int) (int, int) {
-	if outsideWidth > 0 && outsideHeight > 0 {
-		h.width = outsideWidth
-		h.height = outsideHeight
-	}
-	ui.UpdateScreenSize(h.width, h.height)
-	return h.width, h.height
+	ui.UpdateScreenSize(outsideWidth, outsideHeight)
+	return outsideWidth, outsideHeight
 }

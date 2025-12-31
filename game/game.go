@@ -9,8 +9,14 @@ import (
 type GameState int
 
 const (
-	PLAYING GameState = iota // A game is currently in progress
-	GAME_END                 // The game has ended (win or draw)
+	PLAYING  GameState = iota // A game is currently in progress
+	GAME_END                  // The game has ended (win or draw)
+)
+
+const (
+	DefaultBoardWidth  = 3
+	DefaultBoardHeight = 3
+	DefaultToWin       = 3
 )
 
 // Game contains all data and logic required to run a match.
@@ -20,23 +26,50 @@ type Game struct {
 	Players []*Player // All players involved in the game
 	Current *Player   // Player whose turn it currently is
 	Winner  *Player   // Winner of the match (nil in case of draw)
+
+	boardWidth  int
+	boardHeight int
+	toWin       int
 }
 
 // NewGame creates a new Game instance with a full reset.
 func NewGame() *Game {
+	return NewGameWithConfig(DefaultBoardWidth, DefaultBoardHeight, DefaultToWin, nil)
+}
+
+// NewGameWithConfig allows building a game with a custom board and player set.
+// If players is nil or empty, default players are created.
+func NewGameWithConfig(boardWidth, boardHeight, toWin int, players []*Player) *Game {
 	g := &Game{}
-	g.ResetHard()
+	g.ResetHardWithPlayers(boardWidth, boardHeight, toWin, players)
 	return g
 }
 
 // ResetHard fully resets the game state, board, players, and winner.
 // This does NOT preserve any previous scores.
 func (g *Game) ResetHard() {
-	g.Board = NewBoard(3, 3)
+	g.ResetHardWithPlayers(DefaultBoardWidth, DefaultBoardHeight, DefaultToWin, nil)
+}
 
-	g.Players = []*Player{
-		NewPlayer(assets.NewSymbol(assets.CircleSymbol), color.RGBA{R: 255, G: 0, B: 0, A: 255}),
-		NewPlayer(assets.NewSymbol(assets.CrossSymbol), color.RGBA{R: 0, G: 0, B: 255, A: 255}),
+// ResetHardWithPlayers resets everything and swaps in a new board + players.
+func (g *Game) ResetHardWithPlayers(boardWidth, boardHeight, toWin int, players []*Player) {
+	g.boardWidth = boardWidth
+	g.boardHeight = boardHeight
+	g.toWin = toWin
+	g.Board = NewBoard(boardWidth, boardHeight, toWin)
+
+	// Fallback to default players if none provided
+	if len(players) == 0 {
+		players = []*Player{
+			NewPlayer(assets.NewSymbol(assets.CircleSymbol), color.RGBA{R: 255, G: 0, B: 0, A: 255}),
+			NewPlayer(assets.NewSymbol(assets.CrossSymbol), color.RGBA{R: 0, G: 0, B: 255, A: 255}),
+		}
+	}
+
+	g.Players = players
+	// Initialize players' scores to zero
+	for _, p := range g.Players {
+		p.Points = 0
 	}
 
 	g.Current = g.Players[0]
@@ -47,7 +80,11 @@ func (g *Game) ResetHard() {
 // Reset clears the board and restarts the game,
 // while keeping player scores intact.
 func (g *Game) Reset() {
-	g.Board.Clear()
+	if g.Board == nil {
+		g.Board = NewBoard(g.boardWidth, g.boardHeight, g.toWin)
+	} else {
+		g.Board.Clear()
+	}
 	g.Current = g.Players[0]
 	g.Winner = nil
 	g.State = PLAYING

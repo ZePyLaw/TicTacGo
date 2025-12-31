@@ -1,26 +1,30 @@
 package game
 
 // Board represents the game grid and contains player tokens.
-// - Cells is a Size x Size matrix of *Player.
-// - ToWin defines how many aligned symbols are required to win
-//   (used for variants such as 4-in-a-row or 5-in-a-row).
+//   - Cells is a Width x Height matrix of *Player (accessed as Cells[x][y]).
+//   - Width is the number of columns.
+//   - Height is the number of rows.
+//   - ToWin defines how many aligned symbols are required to win
+//     (used for variants such as 4-in-a-row or 5-in-a-row).
 type Board struct {
-	Cells [][]*Player
-	Size  int
-	ToWin int
+	Cells  [][]*Player
+	Width  int // Number of columns
+	Height int // Number of rows
+	ToWin  int
 }
 
-// NewBoard allocates a new empty board of a given size.
+// NewBoard allocates a new empty board with given dimensions.
 // All cells start as nil (empty).
-func NewBoard(size, toWin int) *Board {
+func NewBoard(width, height, toWin int) *Board {
 	b := &Board{
-		Size:  size,
-		ToWin: toWin,
-		Cells: make([][]*Player, size),
+		Width:  width,
+		Height: height,
+		ToWin:  toWin,
+		Cells:  make([][]*Player, width),
 	}
 
-	for i := range b.Cells {
-		b.Cells[i] = make([]*Player, size)
+	for x := range b.Cells {
+		b.Cells[x] = make([]*Player, height)
 	}
 	return b
 }
@@ -29,7 +33,7 @@ func NewBoard(size, toWin int) *Board {
 // Returns true if the move is valid and the cell was empty.
 func (b *Board) Play(p *Player, x, y int) bool {
 	// Out-of-bounds protection
-	if x < 0 || y < 0 || x >= b.Size || y >= b.Size {
+	if x < 0 || y < 0 || x >= b.Width || y >= b.Height {
 		return false
 	}
 	// Cell already filled
@@ -41,64 +45,53 @@ func (b *Board) Play(p *Player, x, y int) bool {
 	return true
 }
 
-// CheckWin verifies if a player has won.
-// It checks all rows, columns, and the two main diagonals.
+// CheckWin verifies if a player has won for any streak of length ToWin
+// horizontally, vertically, or diagonally.
 func (b *Board) CheckWin() *Player {
-	n := b.Size
+	target := b.ToWin
+	minDim := b.Width
+	if b.Height < minDim {
+		minDim = b.Height
+	}
+	if target <= 0 || target > minDim {
+		target = minDim
+	}
 
-	// Check all rows and columns
-	for i := 0; i < n; i++ {
+	directions := [][2]int{
+		{1, 0},  // horizontal
+		{0, 1},  // vertical
+		{1, 1},  // diagonal down-right
+		{1, -1}, // diagonal up-right
+	}
 
-		// Check row i
-		if p := same(b.Cells[i]); p != nil {
-			return p
+	for x := 0; x < b.Width; x++ {
+		for y := 0; y < b.Height; y++ {
+			start := b.Cells[x][y]
+			if start == nil {
+				continue
+			}
+
+			for _, dir := range directions {
+				count := 1
+				for step := 1; step < target; step++ {
+					nx := x + dir[0]*step
+					ny := y + dir[1]*step
+					if nx < 0 || ny < 0 || nx >= b.Width || ny >= b.Height {
+						break
+					}
+					if b.Cells[nx][ny] != start {
+						break
+					}
+					count++
+				}
+				if count == target {
+					return start
+				}
+			}
 		}
-
-		// Check column i
-		col := make([]*Player, n)
-		for y := 0; y < n; y++ {
-			col[y] = b.Cells[y][i]
-		}
-		if p := same(col); p != nil {
-			return p
-		}
-	}
-
-	// Check main diagonal
-	diag1 := make([]*Player, n)
-	for i := 0; i < n; i++ {
-		diag1[i] = b.Cells[i][i]
-	}
-	if p := same(diag1); p != nil {
-		return p
-	}
-
-	// Check anti-diagonal
-	diag2 := make([]*Player, n)
-	for i := 0; i < n; i++ {
-		diag2[i] = b.Cells[i][n-1-i]
-	}
-	if p := same(diag2); p != nil {
-		return p
 	}
 
 	return nil
-}
-
-// same returns the player occupying the whole row/column/diagonal
-// if all entries are identical and non-nil.
-// Otherwise, it returns nil.
-func same(line []*Player) *Player {
-	first := line[0]
-	if first == nil {
-		return nil
-	}
-	for _, p := range line {
-		if p != first {
-			return nil
-		}
-	}
-	return first
 }
 
 // CheckDraw returns true if the board is full and no winner exists.
@@ -120,4 +113,28 @@ func (b *Board) Clear() {
 			b.Cells[x][y] = nil
 		}
 	}
+}
+
+// AvailableMoves returns all empty cell positions on the board.
+func (b *Board) AvailableMoves() []Move {
+	moves := []Move{}
+	for x := 0; x < b.Width; x++ {
+		for y := 0; y < b.Height; y++ {
+			if b.Cells[x][y] == nil {
+				moves = append(moves, Move{X: x, Y: y})
+			}
+		}
+	}
+	return moves
+}
+
+// Clone creates a deep copy of the board.
+func (b *Board) Clone() *Board {
+	clone := NewBoard(b.Width, b.Height, b.ToWin)
+	for x := 0; x < b.Width; x++ {
+		for y := 0; y < b.Height; y++ {
+			clone.Cells[x][y] = b.Cells[x][y]
+		}
+	}
+	return clone
 }

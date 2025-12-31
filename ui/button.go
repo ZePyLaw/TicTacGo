@@ -53,8 +53,15 @@ func NewButton(
 
 // Update handles hover detection, hover animation, and click events.
 func (b *Button) Update() {
-	x, y := b.AbsPosition()
-	b.Hoverable.Update(x, y, b.Width, b.Height)
+	rect := b.LayoutRect()
+	b.UpdateAt(rect.X, rect.Y)
+}
+
+// UpdateAt runs hover + click handling at an explicit screen position.
+// Useful when the button is drawn inside a translated container.
+func (b *Button) UpdateAt(x, y float64) {
+	width, height := b.LayoutSize()
+	b.Hoverable.Update(x, y, width, height)
 
 	// Handle click events
 	if b.IsHovered() && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
@@ -66,10 +73,34 @@ func (b *Button) Update() {
 
 // Draw renders the button background and its centered label.
 func (b *Button) Draw(screen *ebiten.Image) {
-	x, y := b.AbsPosition()
+	rect := b.LayoutRect()
+	b.DrawAt(screen, rect.X, rect.Y)
+}
+
+// SetStyle updates the button style and rebuilds its background.
+func (b *Button) SetStyle(style utils.WidgetStyle, radius float64) {
+	b.Style = style
+	b.image = utils.CreateRoundedRect(int(b.Width), int(b.Height), radius, style.BackgroundNormal)
+}
+
+// DrawAt renders the button at an explicit position without recomputing layout.
+// Useful when nesting the button inside a container that manages its own origin.
+func (b *Button) DrawAt(screen *ebiten.Image, x, y float64) {
+	width, height := b.LayoutSize()
+	srcW := float64(b.image.Bounds().Dx())
+	srcH := float64(b.image.Bounds().Dy())
+	scaleX := 1.0
+	scaleY := 1.0
+	if srcW != 0 {
+		scaleX = width / srcW
+	}
+	if srcH != 0 {
+		scaleY = height / srcH
+	}
 
 	// --- Draw background ---
 	op := &ebiten.DrawImageOptions{}
+	op.GeoM.Scale(scaleX, scaleY)
 	op.GeoM.Translate(x, y)
 
 	// Apply interactive hover color effect
@@ -81,9 +112,9 @@ func (b *Button) Draw(screen *ebiten.Image) {
 	opts := &text.DrawOptions{}
 	opts.PrimaryAlign = text.AlignCenter
 	opts.SecondaryAlign = text.AlignCenter
-
+	opts.LineSpacing = 20
 	// Center the text inside the button
-	opts.GeoM.Translate(x+b.Width/2, y+b.Height/2)
+	opts.GeoM.Translate(x+width/2, y+height/2)
 	opts.ColorScale.ScaleWithColor(b.Style.TextColor)
 
 	text.Draw(screen, b.Label, assets.NormalFont, opts)

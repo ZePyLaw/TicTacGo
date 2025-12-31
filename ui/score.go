@@ -35,10 +35,16 @@ func NewScoreView(g *game.Game, width, height float64, style utils.WidgetStyle) 
 
 // Draw renders the score panel and each player's information.
 func (sv *ScoreView) Draw(screen *ebiten.Image) {
-	x, y := sv.AbsPosition()
+	rect := sv.LayoutRect()
+	x, y := rect.X, rect.Y
 
 	// Draw background rectangle
 	op := &ebiten.DrawImageOptions{}
+	srcW := float64(sv.image.Bounds().Dx())
+	srcH := float64(sv.image.Bounds().Dy())
+	if srcW != 0 && srcH != 0 {
+		op.GeoM.Scale(rect.Width/srcW, rect.Height/srcH)
+	}
 	op.GeoM.Translate(x, y)
 	screen.DrawImage(sv.image, op)
 
@@ -48,11 +54,11 @@ func (sv *ScoreView) Draw(screen *ebiten.Image) {
 	}
 
 	// Split the width into equal zones for each player
-	zoneWidth := sv.Width / float64(playerCount)
+	zoneWidth := rect.Width / float64(playerCount)
 
 	for i, p := range sv.gameRef.Players {
 		zoneX := x + float64(i)*zoneWidth
-		sv.drawPlayerZone(screen, p, zoneX, y, zoneWidth, sv.Height)
+		sv.drawPlayerZone(screen, p, zoneX, y, zoneWidth, rect.Height)
 	}
 }
 
@@ -62,7 +68,20 @@ func (sv *ScoreView) drawPlayerZone(
 	x, y, zoneWidth, zoneHeight float64,
 ) {
 	padding := 12.0
-	iconSize := zoneHeight - (2 * padding)
+	iconSize := zoneHeight - (2 * padding) - 16
+	if iconSize < 16 {
+		iconSize = zoneHeight - (2 * padding)
+	}
+
+	// --- Draw name ---
+	if p.Name != "" {
+		nameOpts := &text.DrawOptions{}
+		nameOpts.PrimaryAlign = text.AlignCenter
+		nameOpts.SecondaryAlign = text.AlignCenter
+		nameOpts.ColorScale.ScaleWithColor(p.Color)
+		nameOpts.GeoM.Translate(x+zoneWidth/2, y+padding/2+2)
+		text.Draw(screen, p.Name, assets.NormalFont, nameOpts)
+	}
 
 	// --- Draw symbol ---
 	if p.Symbol != nil && p.Symbol.Image != nil {
@@ -77,7 +96,7 @@ func (sv *ScoreView) drawPlayerZone(
 
 		// Center icon horizontally inside zone
 		iconX := x + (zoneWidth-iconSize)/2
-		iconY := y + padding
+		iconY := y + padding + 12
 		op.GeoM.Translate(iconX, iconY)
 
 		// Apply player color tint

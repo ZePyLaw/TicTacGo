@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"log"
 
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
@@ -13,7 +11,6 @@ import (
 var (
 	NormalFont text.Face
 	BigFont    text.Face
-	Logo       *ebiten.Image
 )
 
 func init() {
@@ -31,10 +28,4 @@ func init() {
 		Source: tt,
 		Size:   80,
 	}
-
-	logoImg, _, err := ebitenutil.NewImageFromFile("assets/static/gonnectmax_logo.png")
-	if err != nil {
-		log.Fatal(err)
-	}
-	Logo = logoImg
 }

@@ -20,7 +20,7 @@ func ComputeAnchoredPosition(
 	anchor Anchor,
 	offsetX, offsetY float64,
 	w, h float64,
-	screenW, screenH int,
+	parentW, parentH float64,
 ) (float64, float64) {
 
 	x := offsetX
@@ -28,27 +28,27 @@ func ComputeAnchoredPosition(
 
 	switch anchor {
 	case AnchorTopCenter:
-		x = float64(screenW)/2 - w/2 + offsetX
+		x = parentW/2 - w/2 + offsetX
 	case AnchorTopRight:
-		x = float64(screenW) - w + offsetX
+		x = parentW - w + offsetX
 
 	case AnchorCenterLeft:
-		y = float64(screenH)/2 - h/2 + offsetY
+		y = parentH/2 - h/2 + offsetY
 	case AnchorCenter:
-		x = float64(screenW)/2 - w/2 + offsetX
-		y = float64(screenH)/2 - h/2 + offsetY
+		x = parentW/2 - w/2 + offsetX
+		y = parentH/2 - h/2 + offsetY
 	case AnchorCenterRight:
-		x = float64(screenW) - w + offsetX
-		y = float64(screenH)/2 - h/2 + offsetY
+		x = parentW - w + offsetX
+		y = parentH/2 - h/2 + offsetY
 
 	case AnchorBottomLeft:
-		y = float64(screenH) - h + offsetY
+		y = parentH - h + offsetY
 	case AnchorBottomCenter:
-		x = float64(screenW)/2 - w/2 + offsetX
-		y = float64(screenH) - h + offsetY
+		x = parentW/2 - w/2 + offsetX
+		y = parentH - h + offsetY
 	case AnchorBottomRight:
-		x = float64(screenW) - w + offsetX
-		y = float64(screenH) - h + offsetY
+		x = parentW - w + offsetX
+		y = parentH - h + offsetY
 	}
 
 	return x, y

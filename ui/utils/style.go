@@ -33,6 +33,19 @@ var DefaultWidgetStyle = WidgetStyle{
 	HoverMode: HoverColorLerp,
 }
 
+// DisabledWidgetStyle is the default style to make something disabled.
+var DisabledWidgetStyle = WidgetStyle{
+	BackgroundNormal: color.RGBA{40, 40, 40, 255},
+	BackgroundHover:  color.RGBA{40, 40, 40, 255},
+
+	TextColor: color.Gray{255},
+
+	BorderColor: color.RGBA{255, 255, 255, 50},
+	BorderWidth: 2,
+
+	HoverMode: HoverSolid,
+}
+
 // TransparentWidgetStyle is the style for transparent widgets.
 var TransparentWidgetStyle = WidgetStyle{
 	BackgroundNormal: color.RGBA{0, 0, 0, 0},
@@ -46,14 +59,39 @@ var TransparentWidgetStyle = WidgetStyle{
 	HoverMode: HoverFade,
 }
 
-// DangerWidgetStyle is the style for danger widgets.
-var DangerWidgetStyle = WidgetStyle{
-	BackgroundNormal: color.RGBA{200, 30, 30, 255},
-	BackgroundHover:  color.RGBA{255, 80, 80, 255},
+var NormalWidgetStyle = WidgetStyle{
+	BackgroundNormal: color.RGBA{64, 92, 245, 100},
+	BackgroundHover:  color.RGBA{43, 61, 163, 255},
 
 	TextColor: color.White,
 
 	BorderColor: color.RGBA{60, 0, 0, 255},
+	BorderWidth: 2,
+
+	HoverMode: HoverColorLerp,
+}
+
+// DangerWidgetStyle is the style for danger widgets.
+var DangerWidgetStyle = WidgetStyle{
+	BackgroundNormal: color.RGBA{200, 30, 30, 255},
+	BackgroundHover:  color.RGBA{200, 30, 30, 255},
+
+	TextColor: color.White,
+
+	BorderColor: color.RGBA{60, 0, 0, 255},
+	BorderWidth: 2,
+
+	HoverMode: HoverSolid,
+}
+
+// SuccessWidgetStyle is the style for positive/confirm actions (e.g., ready).
+var SuccessWidgetStyle = WidgetStyle{
+	BackgroundNormal: color.RGBA{40, 170, 80, 255},
+	BackgroundHover:  color.RGBA{30, 140, 60, 255},
+
+	TextColor: color.White,
+
+	BorderColor: color.RGBA{0, 80, 0, 255},
 	BorderWidth: 2,
 
 	HoverMode: HoverColorLerp,

@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	windowWidth  = 1920 / 2
-	windowHeight = 1080 / 2
+	windowWidth  = 1920 * 0.7
+	windowHeight = 1080 * 0.7
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	ebiten.SetWindowTitle("Go Tic Tac Toe")
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 
-	host := screens.NewScreenHost(windowWidth, windowHeight)
+	host := screens.NewScreenHost()
 	host.SetScreen(screens.NewStartScreen(host)) // start screen
 
 	if err := ebiten.RunGame(host); err != nil {

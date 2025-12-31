@@ -1,6 +1,7 @@
 package screens
 
 import (
+	"GoTicTacToe/ai_models"
 	"GoTicTacToe/assets"
 	"GoTicTacToe/ui"
 	uiutils "GoTicTacToe/ui/utils"
@@ -12,32 +13,72 @@ import (
 type StartScreen struct {
 	host       ScreenHost
 	buttons    []*ui.Button
+	buttonPane *ui.Container
 	background *ebiten.Image
 }
 
 const (
-	buttonWidth  = float64(200)
-	buttonHeight = float64(64)
-	buttonRadius = float64(10)
+	buttonWidth      = float64(200)
+	buttonHeight     = float64(64)
+	buttonRadius     = float64(10)
+	buttonSpacing    = float64(20)
+	buttonYOffset    = float64(140)
+	buttonPaneWidth  = float64(720)
+	buttonPaneHeight = float64(200)
 )
 
 func NewStartScreen(h ScreenHost) *StartScreen {
 	s := &StartScreen{host: h}
 
+	s.buttonPane = ui.NewContainer(
+		0, buttonYOffset,
+		buttonPaneWidth, buttonPaneHeight,
+		uiutils.AnchorCenter,
+		12,
+		uiutils.TransparentWidgetStyle,
+	)
+	s.buttonPane.Padding = uiutils.InsetsAll(12)
+
 	s.buttons = []*ui.Button{
-		ui.NewButton("Local Play", -buttonWidth/2-10, 200.0, uiutils.AnchorCenter, buttonWidth, buttonHeight, buttonRadius, uiutils.DefaultWidgetStyle, func() {
-			s.host.SetScreen(NewGameScreen(s.host))
-		}),
-		ui.NewButton("Multiplayer", buttonWidth/2+10, 200.0, uiutils.AnchorCenter, buttonWidth, buttonHeight, buttonRadius, uiutils.TransparentWidgetStyle, func() {}),
+		ui.NewButton("Quick Local", -buttonWidth-buttonSpacing, 0, uiutils.AnchorCenter,
+			buttonWidth, buttonHeight, buttonRadius, uiutils.NormalWidgetStyle,
+			func() {
+				cfg := DefaultGameConfig()
+				h.SetScreen(NewGameScreen(h, cfg))
+			},
+		),
+
+		ui.NewButton("Quick vs AI", 0, 0, uiutils.AnchorCenter,
+			buttonWidth, buttonHeight, buttonRadius,
+			uiutils.NormalWidgetStyle,
+			func() {
+				cfg := DefaultGameConfig()
+				cfg.Players[1].IsAI = true
+				cfg.Players[1].AIModel = ai_models.MinimaxAI{}
+				h.SetScreen(NewGameScreen(h, cfg))
+			},
+		),
+
+		ui.NewButton(
+			"Customize",
+			buttonWidth+buttonSpacing, 0,
+			uiutils.AnchorCenter,
+			buttonWidth, buttonHeight, buttonRadius,
+			uiutils.DefaultWidgetStyle,
+			func() {
+				h.SetScreen(NewSetupScreen(h, DefaultGameConfig()))
+			},
+		),
 	}
 
+	for _, btn := range s.buttons {
+		s.buttonPane.AddChild(btn)
+	}
 	return s
 }
 
 func (s *StartScreen) Update() error {
-	for _, btn := range s.buttons {
-		btn.Update()
-	}
+	s.buttonPane.Update()
 	return nil
 }
 
@@ -58,7 +99,7 @@ func (s *StartScreen) Draw(screen *ebiten.Image) {
 
 	op.Filter = ebiten.FilterLinear
 
-	targetWidth := float64(w) * 0.7
+	targetWidth := float64(w) * 0.5
 
 	scaleFactor := targetWidth / origLogoW
 
@@ -68,14 +109,12 @@ func (s *StartScreen) Draw(screen *ebiten.Image) {
 	scaledLogoH := origLogoH * scaleFactor
 
 	posX := (float64(w) - scaledLogoW) / 2
-	posY := (float64(h) - scaledLogoH) / 2 * 0.6
+	posY := (float64(h) - scaledLogoH) / 2 * 0.4
 
 	op.GeoM.Translate(posX, posY)
 
 	screen.DrawImage(logo, op)
 
 	// Buttons
-	for _, btn := range s.buttons {
-		btn.Draw(screen)
-	}
+	s.buttonPane.Draw(screen)
 }
