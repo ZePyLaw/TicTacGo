@@ -55,23 +55,27 @@ func (v *BoardView) createGridImage(width, height int) *ebiten.Image {
 	// Fill board background
 	img.Fill(v.Style.BackgroundNormal)
 
-	cellSize := float64(width) / float64(v.logicBoard.Size)
+	cellWidth := float64(width) / float64(v.logicBoard.Width)
+	cellHeight := float64(height) / float64(v.logicBoard.Height)
 	thickness := v.Style.BorderWidth
 	lineColor := v.Style.BorderColor
 
-	// Draw vertical and horizontal grid lines
-	for i := 1; i < v.logicBoard.Size; i++ {
-		offset := float64(i) * cellSize
+	// Draw vertical grid lines
+	for i := 1; i < v.logicBoard.Width; i++ {
+		offset := float64(i) * cellWidth
 
-		// Vertical line
 		vert := ebiten.NewImage(int(thickness), height)
 		vert.Fill(lineColor)
 
 		opv := &ebiten.DrawImageOptions{}
 		opv.GeoM.Translate(offset-thickness/2, 0)
 		img.DrawImage(vert, opv)
+	}
 
-		// Horizontal line
+	// Draw horizontal grid lines
+	for i := 1; i < v.logicBoard.Height; i++ {
+		offset := float64(i) * cellHeight
+
 		hori := ebiten.NewImage(width, int(thickness))
 		hori.Fill(lineColor)
 
@@ -107,11 +111,12 @@ func (v *BoardView) Update() {
 		if float64(mx) >= vx && float64(mx) <= vx+rect.Width &&
 			float64(my) >= vy && float64(my) <= vy+rect.Height {
 
-			cellSize := rect.Width / float64(v.logicBoard.Size)
+			cellWidth := rect.Width / float64(v.logicBoard.Width)
+			cellHeight := rect.Height / float64(v.logicBoard.Height)
 
 			// Convert pixel coordinates → board grid coordinates
-			gridX := int((float64(mx) - vx) / cellSize)
-			gridY := int((float64(my) - vy) / cellSize)
+			gridX := int((float64(mx) - vx) / cellWidth)
+			gridY := int((float64(my) - vy) / cellHeight)
 
 			// Trigger callback
 			if v.OnCellClick != nil {
@@ -137,13 +142,20 @@ func (v *BoardView) Draw(screen *ebiten.Image) {
 	opGrid.GeoM.Translate(vx, vy)
 	screen.DrawImage(v.Widget.image, opGrid)
 
-	cellSize := rect.Width / float64(v.logicBoard.Size)
+	cellWidth := rect.Width / float64(v.logicBoard.Width)
+	cellHeight := rect.Height / float64(v.logicBoard.Height)
+
+	// Use the smaller dimension for symbol sizing to maintain aspect ratio
+	cellSize := cellWidth
+	if cellHeight < cellSize {
+		cellSize = cellHeight
+	}
 	padding := cellSize * 0.1          // 10% padding inside each cell
 	usableSize := cellSize - 2*padding // Space available for the symbol
 
 	// --- Draw all symbols (X and O) ---
-	for x := 0; x < v.logicBoard.Size; x++ {
-		for y := 0; y < v.logicBoard.Size; y++ {
+	for x := 0; x < v.logicBoard.Width; x++ {
+		for y := 0; y < v.logicBoard.Height; y++ {
 			p := v.logicBoard.Cells[x][y]
 			if p == nil || p.Symbol.Image == nil {
 				continue
@@ -166,9 +178,11 @@ func (v *BoardView) Draw(screen *ebiten.Image) {
 			// Scale first
 			opSym.GeoM.Scale(scale, scale)
 
-			// Position inside the cell with padding
-			drawX := vx + float64(x)*cellSize + padding
-			drawY := vy + float64(y)*cellSize + padding
+			// Position inside the cell with padding, centered
+			symbolW := float64(srcW) * scale
+			symbolH := float64(srcH) * scale
+			drawX := vx + float64(x)*cellWidth + (cellWidth-symbolW)/2
+			drawY := vy + float64(y)*cellHeight + (cellHeight-symbolH)/2
 
 			opSym.GeoM.Translate(drawX, drawY)
 

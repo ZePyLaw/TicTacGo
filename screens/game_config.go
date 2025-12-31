@@ -18,16 +18,18 @@ type PlayerConfig struct {
 
 // GameConfig aggregates the custom setup before launching a match.
 type GameConfig struct {
-	BoardSize int
-	ToWin     int
-	Players   []PlayerConfig
+	BoardWidth  int // Number of columns in the grid
+	BoardHeight int // Number of rows in the grid
+	ToWin       int // Number of aligned symbols required to win
+	Players     []PlayerConfig
 }
 
 // DefaultGameConfig returns a ready-to-play configuration with 2 humans.
 func DefaultGameConfig() GameConfig {
 	return GameConfig{
-		BoardSize: 3,
-		ToWin:     3,
+		BoardWidth:  3,
+		BoardHeight: 3,
+		ToWin:       3,
 		Players: []PlayerConfig{
 			{
 				Name:   "Player 1",
@@ -39,18 +41,6 @@ func DefaultGameConfig() GameConfig {
 				Name:   "Player 2",
 				Color:  color.RGBA{R: 54, G: 162, B: 235, A: 255},
 				Symbol: assets.CrossSymbol,
-				Ready:  false,
-			},
-			{
-				Name:   "Player 3",
-				Color:  color.RGBA{R: 75, G: 192, B: 192, A: 255},
-				Symbol: assets.TriangleSymbol,
-				Ready:  false,
-			},
-			{
-				Name:   "Player 4",
-				Color:  color.RGBA{R: 255, G: 206, B: 86, A: 255},
-				Symbol: assets.SquareSymbol,
 				Ready:  false,
 			},
 		},

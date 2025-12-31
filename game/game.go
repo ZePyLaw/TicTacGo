@@ -14,8 +14,9 @@ const (
 )
 
 const (
-	DefaultBoardSize = 3
-	DefaultToWin     = 3
+	DefaultBoardWidth  = 3
+	DefaultBoardHeight = 3
+	DefaultToWin       = 3
 )
 
 // Game contains all data and logic required to run a match.
@@ -26,34 +27,36 @@ type Game struct {
 	Current *Player   // Player whose turn it currently is
 	Winner  *Player   // Winner of the match (nil in case of draw)
 
-	boardSize int
-	toWin     int
+	boardWidth  int
+	boardHeight int
+	toWin       int
 }
 
 // NewGame creates a new Game instance with a full reset.
 func NewGame() *Game {
-	return NewGameWithConfig(DefaultBoardSize, DefaultToWin, nil)
+	return NewGameWithConfig(DefaultBoardWidth, DefaultBoardHeight, DefaultToWin, nil)
 }
 
 // NewGameWithConfig allows building a game with a custom board and player set.
 // If players is nil or empty, default players are created.
-func NewGameWithConfig(boardSize, toWin int, players []*Player) *Game {
+func NewGameWithConfig(boardWidth, boardHeight, toWin int, players []*Player) *Game {
 	g := &Game{}
-	g.ResetHardWithPlayers(boardSize, toWin, players)
+	g.ResetHardWithPlayers(boardWidth, boardHeight, toWin, players)
 	return g
 }
 
 // ResetHard fully resets the game state, board, players, and winner.
 // This does NOT preserve any previous scores.
 func (g *Game) ResetHard() {
-	g.ResetHardWithPlayers(10, 3, nil)
+	g.ResetHardWithPlayers(DefaultBoardWidth, DefaultBoardHeight, DefaultToWin, nil)
 }
 
 // ResetHardWithPlayers resets everything and swaps in a new board + players.
-func (g *Game) ResetHardWithPlayers(boardSize, toWin int, players []*Player) {
-	g.boardSize = boardSize
+func (g *Game) ResetHardWithPlayers(boardWidth, boardHeight, toWin int, players []*Player) {
+	g.boardWidth = boardWidth
+	g.boardHeight = boardHeight
 	g.toWin = toWin
-	g.Board = NewBoard(boardSize, toWin)
+	g.Board = NewBoard(boardWidth, boardHeight, toWin)
 
 	// Fallback to default players if none provided
 	if len(players) == 0 {
@@ -78,7 +81,7 @@ func (g *Game) ResetHardWithPlayers(boardSize, toWin int, players []*Player) {
 // while keeping player scores intact.
 func (g *Game) Reset() {
 	if g.Board == nil {
-		g.Board = NewBoard(g.boardSize, g.toWin)
+		g.Board = NewBoard(g.boardWidth, g.boardHeight, g.toWin)
 	} else {
 		g.Board.Clear()
 	}
@@ -155,26 +158,4 @@ func (g *Game) CheckDraw() bool {
 		return true
 	}
 	return false
-}
-
-func (b *Board) AvailableMoves() []Move {
-	moves := []Move{}
-	for x := 0; x < b.Size; x++ {
-		for y := 0; y < b.Size; y++ {
-			if b.Cells[x][y] == nil {
-				moves = append(moves, Move{X: x, Y: y})
-			}
-		}
-	}
-	return moves
-}
-
-func (b *Board) Clone() *Board {
-	clone := NewBoard(b.Size, b.ToWin)
-	for x := 0; x < b.Size; x++ {
-		for y := 0; y < b.Size; y++ {
-			clone.Cells[x][y] = b.Cells[x][y]
-		}
-	}
-	return clone
 }

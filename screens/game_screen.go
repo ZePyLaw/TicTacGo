@@ -33,19 +33,29 @@ const (
 
 // NewGameScreen initializes a new GameScreen with a fresh game and board view.
 func NewGameScreen(h ScreenHost, cfg GameConfig) *GameScreen {
-	boardSize := cfg.BoardSize
-	if boardSize < 3 {
-		boardSize = 3
+	boardWidth := cfg.BoardWidth
+	if boardWidth < 3 {
+		boardWidth = 3
+	}
+	boardHeight := cfg.BoardHeight
+	if boardHeight < 3 {
+		boardHeight = 3
+	}
+
+	// ToWin must be <= smallest dimension
+	minDim := boardWidth
+	if boardHeight < minDim {
+		minDim = boardHeight
 	}
 	toWin := cfg.ToWin
-	if toWin <= 0 || toWin > boardSize {
-		toWin = boardSize
+	if toWin <= 0 || toWin > minDim {
+		toWin = minDim
 	}
 
 	players, aiMap := buildPlayers(cfg)
 
 	// Create game logic
-	g := game.NewGameWithConfig(boardSize, toWin, players)
+	g := game.NewGameWithConfig(boardWidth, boardHeight, toWin, players)
 
 	gs := &GameScreen{
 		host:     h,
