@@ -9,7 +9,6 @@ import (
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
@@ -25,13 +24,12 @@ type SetupScreen struct {
 	host          ScreenHost
 	config        GameConfig
 	buttons       []*ui.Button
+	playerCards   []*ui.PlayerCardView
 	playerButtons []playerCardButtons
 	addPlayerBtn  *ui.Button
+	startBtn      *ui.Button
 	root          *ui.Container
 	background    *ebiten.Image
-	cardBg        *ebiten.Image
-	accentStrip   *ebiten.Image
-	symbolImages  map[assets.SymbolType]*ebiten.Image
 }
 
 const (
@@ -40,7 +38,7 @@ const (
 	cardSpacingX = 30.0
 	cardSpacingY = 26.0
 	cardStartY   = -10.0
-	maxPlayers   = 6
+	maxPlayers   = 4
 	cardsPerRow  = 4
 )
 
@@ -81,14 +79,15 @@ func NewSetupScreen(h ScreenHost, baseCfg GameConfig) *SetupScreen {
 		host:   h,
 		config: cfg,
 	}
-	s.buildButtons()
+	s.init()
 	s.refreshLabels()
 	return s
 }
 
-func (s *SetupScreen) buildButtons() {
+func (s *SetupScreen) init() {
 	s.buttons = nil
 	s.addPlayerBtn = nil
+	s.playerCards = make([]*ui.PlayerCardView, len(s.config.Players))
 	s.playerButtons = make([]playerCardButtons, len(s.config.Players))
 
 	// Root container stretches to the full screen so children can anchor against it.
@@ -109,6 +108,13 @@ func (s *SetupScreen) buildButtons() {
 	// Player panels (2 columns)
 	for i := range s.config.Players {
 		cx, cy := s.cardCenter(i)
+
+		card := ui.NewPlayerCard(cx, cy, cardWidth, cardHeight, uiutils.AnchorCenter)
+		card.OnSymbolClick = func(idx int) func() {
+			return func() { s.cycleColor(idx) }
+		}(i)
+		s.playerCards[i] = card
+		s.root.AddChild(card)
 
 		roleBtn := ui.NewButton("", cx+cardWidth/2-70, cy-cardHeight/2+26, uiutils.AnchorCenter,
 			120, 36, buttonRadius, uiutils.DefaultWidgetStyle,
@@ -143,6 +149,8 @@ func (s *SetupScreen) buildButtons() {
 			}(i),
 		)
 
+		card.ReadyButton = readyBtn
+
 		s.playerButtons[i] = playerCardButtons{
 			role:       roleBtn,
 			symbolPrev: symbolPrev,
@@ -162,14 +170,14 @@ func (s *SetupScreen) buildButtons() {
 		s.buttons = append(s.buttons, s.addPlayerBtn)
 	}
 
-	startBtn := ui.NewButton("Start Game", -140, 320, uiutils.AnchorCenter,
+	s.startBtn = ui.NewButton("Start Game", -140, 320, uiutils.AnchorCenter,
 		220, 60, buttonRadius, uiutils.NormalWidgetStyle,
 		func() { s.startGame() })
 	backBtn := ui.NewButton("Back", 140, 320, uiutils.AnchorCenter,
 		220, 60, buttonRadius, uiutils.TransparentWidgetStyle,
 		func() { s.host.SetScreen(NewStartScreen(s.host)) })
 
-	s.buttons = append(s.buttons, startBtn, backBtn)
+	s.buttons = append(s.buttons, s.startBtn, backBtn)
 
 	for _, b := range s.buttons {
 		s.root.AddChild(b)
@@ -179,9 +187,6 @@ func (s *SetupScreen) buildButtons() {
 func (s *SetupScreen) Update() error {
 	if s.root != nil {
 		s.root.Update()
-	}
-	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-		s.handleSymbolClick()
 	}
 	return nil
 }
@@ -210,130 +215,10 @@ func (s *SetupScreen) Draw(screen *ebiten.Image) {
 	boardOpts.GeoM.Translate(float64(w)/2, 120)
 	text.Draw(screen, boardMsg, assets.NormalFont, boardOpts)
 
-	rootRect := s.root.LayoutRect()
-	centerX := rootRect.X + rootRect.Width/2
-	centerY := rootRect.Y + rootRect.Height/2
-
-	s.drawPlayerCards(screen, centerX, centerY)
-
 	// Buttons
 	if s.root != nil {
 		s.root.Draw(screen)
 	}
-}
-
-func (s *SetupScreen) ensureCardAssets() {
-	if s.cardBg == nil {
-		bgColor := color.RGBA{R: 24, G: 34, B: 58, A: 230}
-		s.cardBg = uiutils.CreateRoundedRect(int(cardWidth), int(cardHeight), 14, bgColor)
-	}
-	if s.accentStrip == nil {
-		s.accentStrip = ebiten.NewImage(int(cardWidth), 14)
-	}
-	if s.symbolImages == nil {
-		s.symbolImages = make(map[assets.SymbolType]*ebiten.Image)
-	}
-}
-
-func (s *SetupScreen) symbolImage(sym assets.SymbolType) *ebiten.Image {
-	if img, ok := s.symbolImages[sym]; ok && img != nil {
-		return img
-	}
-	img := assets.NewSymbol(sym).Image
-	s.symbolImages[sym] = img
-	return img
-}
-
-func (s *SetupScreen) drawPlayerCards(screen *ebiten.Image, centerX, centerY float64) {
-	s.ensureCardAssets()
-
-	for i, pc := range s.config.Players {
-		s.drawPlayerCard(screen, i, pc, centerX, centerY)
-	}
-
-	if s.addPlayerBtn != nil {
-		s.drawAddCard(screen, len(s.config.Players), centerX, centerY)
-	}
-}
-
-func (s *SetupScreen) drawPlayerCard(screen *ebiten.Image, idx int, pc PlayerConfig, centerX, centerY float64) {
-	cx, cy := s.cardCenter(idx)
-	cx += centerX
-	cy += centerY
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(cx-cardWidth/2, cy-cardHeight/2)
-	screen.DrawImage(s.cardBg, op)
-
-	playerColor := pc.Color
-	if playerColor == nil {
-		playerColor = playerPalette[idx%len(playerPalette)]
-	}
-
-	baseColor := color.RGBAModel.Convert(playerColor).(color.RGBA)
-	accentColor := baseColor
-	accentColor.A = 210
-	s.accentStrip.Fill(accentColor)
-
-	accentOp := &ebiten.DrawImageOptions{}
-	accentOp.GeoM.Translate(cx-cardWidth/2, cy-cardHeight/2)
-	screen.DrawImage(s.accentStrip, accentOp)
-
-	name := fmt.Sprintf("Player %d", idx+1)
-	if pc.Name != "" {
-		name = pc.Name
-	}
-
-	nameOpts := &text.DrawOptions{}
-	nameOpts.PrimaryAlign = text.AlignStart
-	nameOpts.SecondaryAlign = text.AlignCenter
-	nameOpts.ColorScale.ScaleWithColor(color.White)
-	nameOpts.GeoM.Translate(cx-cardWidth/2+14, cy-cardHeight/2+28)
-	text.Draw(screen, name, assets.NormalFont, nameOpts)
-
-	stateLabel := s.roleLabel(pc)
-	stateOpts := &text.DrawOptions{}
-	stateOpts.PrimaryAlign = text.AlignStart
-	stateOpts.SecondaryAlign = text.AlignCenter
-	stateOpts.ColorScale.ScaleWithColor(color.RGBA{R: 180, G: 200, B: 230, A: 255})
-	stateOpts.GeoM.Translate(cx-cardWidth/2+14, cy-cardHeight/2+58)
-	text.Draw(screen, stateLabel, assets.NormalFont, stateOpts)
-
-	symbolImg := s.symbolImage(pc.Symbol)
-	if symbolImg != nil {
-		iconSize := cardHeight * 0.35
-		srcW := float64(symbolImg.Bounds().Dx())
-		srcH := float64(symbolImg.Bounds().Dy())
-		scale := iconSize / srcH
-		if srcW > srcH {
-			scale = iconSize / srcW
-		}
-
-		symOp := &ebiten.DrawImageOptions{}
-		symOp.Filter = ebiten.FilterLinear
-		symOp.GeoM.Scale(scale, scale)
-		symOp.GeoM.Translate(cx-iconSize/2, cy-cardHeight/2+80)
-		symOp.ColorScale.ScaleWithColor(baseColor)
-		screen.DrawImage(symbolImg, symOp)
-	}
-
-}
-
-func (s *SetupScreen) drawAddCard(screen *ebiten.Image, idx int, centerX, centerY float64) {
-	cx, cy := s.cardCenter(idx)
-	cx += centerX
-	cy += centerY
-
-	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(cx-cardWidth/2, cy-cardHeight/2)
-	screen.DrawImage(s.cardBg, op)
-
-	labelOpts := &text.DrawOptions{}
-	labelOpts.PrimaryAlign = text.AlignCenter
-	labelOpts.SecondaryAlign = text.AlignCenter
-	labelOpts.ColorScale.ScaleWithColor(color.RGBA{R: 210, G: 230, B: 255, A: 255})
-	labelOpts.GeoM.Translate(cx, cy)
-	text.Draw(screen, "Add Player", assets.NormalFont, labelOpts)
 }
 
 func (s *SetupScreen) changeBoardSize(delta int) {
@@ -355,33 +240,6 @@ func (s *SetupScreen) cardCenter(idx int) (float64, float64) {
 	offsetX := (float64(col) * (cardWidth + cardSpacingX)) - ((float64(cardsPerRow-1))*(cardWidth+cardSpacingX))/2
 	offsetY := cardStartY + float64(row)*(cardHeight+cardSpacingY)
 	return offsetX, offsetY
-}
-
-func (s *SetupScreen) handleSymbolClick() {
-	if s.root == nil {
-		return
-	}
-	mx, my := ebiten.CursorPosition()
-
-	rootRect := s.root.LayoutRect()
-	centerX := rootRect.X + rootRect.Width/2
-	centerY := rootRect.Y + rootRect.Height/2
-
-	iconSize := cardHeight * 0.35
-	for i := range s.config.Players {
-		cx, cy := s.cardCenter(i)
-		cx += centerX
-		cy += centerY
-
-		iconX := cx - iconSize/2
-		iconY := cy - cardHeight/2 + 80
-
-		if float64(mx) >= iconX && float64(mx) <= iconX+iconSize &&
-			float64(my) >= iconY && float64(my) <= iconY+iconSize {
-			s.cycleColor(i)
-			break
-		}
-	}
 }
 
 func (s *SetupScreen) cycleRole(idx int) {
@@ -414,8 +272,15 @@ func (s *SetupScreen) cycleRole(idx int) {
 		pc.Ready = true
 		pc.AIModel = ai_models.MinimaxAI{}
 	case "ai-hard":
-		s.removePlayer(idx)
-		return
+		if len(s.config.Players) <= 1 {
+			// Can't remove the last player, cycle back to human
+			pc.IsAI = false
+			pc.Ready = false
+			pc.AIModel = nil
+		} else {
+			s.removePlayer(idx)
+			return
+		}
 	default: // removed
 		pc.IsAI = false
 		pc.Ready = false
@@ -506,42 +371,42 @@ func (s *SetupScreen) refreshLabels() {
 		}
 		pb := s.playerButtons[i]
 
+		playerName := fmt.Sprintf("Player %d", i+1)
+		if pc.Name != "" {
+			playerName = pc.Name
+		}
+
+		playerColor := pc.Color
+		if playerColor == nil {
+			playerColor = playerPalette[i%len(playerPalette)]
+		}
+
+		if i < len(s.playerCards) && s.playerCards[i] != nil {
+			s.playerCards[i].UpdateFromConfig(ui.PlayerCardConfig{
+				Name:     playerName,
+				Subtitle: s.roleLabel(pc),
+				Symbol:   pc.Symbol,
+				Color:    playerColor,
+				Ready:    pc.Ready,
+			})
+		}
+
 		if pb.role != nil {
 			pb.role.Label = s.roleLabel(pc)
-		}
-		if pb.symbolPrev != nil {
-			pb.symbolPrev.Label = "<"
-		}
-		if pb.symbolNext != nil {
-			pb.symbolNext.Label = ">"
-		}
-		if pb.ready != nil {
-			if pc.Ready {
-				pb.ready.Label = "Ready"
-				setReadyButtonStyle(pb.ready, true)
-			} else {
-				pb.ready.Label = "Not Ready"
-				setReadyButtonStyle(pb.ready, false)
-			}
 		}
 	}
 
 	if s.addPlayerBtn != nil {
 		s.addPlayerBtn.Label = fmt.Sprintf("+ Add Player (%d/%d)", len(s.config.Players), maxPlayers)
 	}
-}
 
-func setReadyButtonStyle(btn *ui.Button, ready bool) {
-	if btn == nil {
-		return
+	if s.startBtn != nil {
+		if s.canStartGame() {
+			s.startBtn.Style = uiutils.NormalWidgetStyle
+		} else {
+			s.startBtn.Style = uiutils.DisabledWidgetStyle
+		}
 	}
-
-	style := uiutils.DefaultWidgetStyle
-	if ready {
-		style = uiutils.SuccessWidgetStyle
-	}
-	btn.Style = style
-	//btn.Hoverable = uiutils.NewHoverable(style.HoverMode)
 }
 
 func (s *SetupScreen) roleLabel(pc PlayerConfig) string {
@@ -557,54 +422,23 @@ func (s *SetupScreen) roleLabel(pc PlayerConfig) string {
 	return "Human"
 }
 
-func (s *SetupScreen) startGame() {
-	// Ensure at least two player slots exist
-	for len(s.config.Players) < 2 && len(s.config.Players) < maxPlayers {
-		idx := len(s.config.Players)
-		s.config.Players = append(s.config.Players, PlayerConfig{
-			Name:   fmt.Sprintf("Player %d", idx+1),
-			Color:  playerPalette[idx%len(playerPalette)],
-			Symbol: playerSymbolOrder[idx%len(playerSymbolOrder)],
-			Ready:  false,
-		})
+func (s *SetupScreen) canStartGame() bool {
+	if len(s.config.Players) < 2 {
+		return false
 	}
-
-	// Guarantee at least two ready players before starting.
-	readyCount := 0
-	for i := range s.config.Players {
-		if s.config.Players[i].Ready {
-			readyCount++
+	for _, pc := range s.config.Players {
+		if !pc.Ready {
+			return false
 		}
 	}
-	if readyCount < 2 {
-		for i := range s.config.Players {
-			if !s.config.Players[i].Ready {
-				s.config.Players[i].Ready = true
-				readyCount++
-				if readyCount >= 2 {
-					break
-				}
-			}
-		}
-	}
-
-	s.refreshLabels()
-	s.host.SetScreen(NewGameScreen(s.host, s.config))
+	return true
 }
 
-func symbolName(sym assets.SymbolType) string {
-	switch sym {
-	case assets.CircleSymbol:
-		return "Circle"
-	case assets.CrossSymbol:
-		return "Cross"
-	case assets.TriangleSymbol:
-		return "Triangle"
-	case assets.SquareSymbol:
-		return "Square"
-	default:
-		return "Circle"
+func (s *SetupScreen) startGame() {
+	if !s.canStartGame() {
+		return
 	}
+	s.host.SetScreen(NewGameScreen(s.host, s.config))
 }
 
 func colorsEqual(a color.Color, b color.Color) bool {
@@ -614,12 +448,4 @@ func colorsEqual(a color.Color, b color.Color) bool {
 	ar, ag, ab, aa := a.RGBA()
 	br, bg, bb, ba := b.RGBA()
 	return ar == br && ag == bg && ab == bb && aa == ba
-}
-
-func hexColor(c color.Color) string {
-	if c == nil {
-		c = playerPalette[0]
-	}
-	r, g, b, _ := c.RGBA()
-	return fmt.Sprintf("%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8))
 }

@@ -33,6 +33,19 @@ var DefaultWidgetStyle = WidgetStyle{
 	HoverMode: HoverColorLerp,
 }
 
+// DisabledWidgetStyle is the default style to make something disabled.
+var DisabledWidgetStyle = WidgetStyle{
+	BackgroundNormal: color.RGBA{40, 40, 40, 255},
+	BackgroundHover:  color.RGBA{40, 40, 40, 255},
+
+	TextColor: color.Gray{255},
+
+	BorderColor: color.RGBA{255, 255, 255, 50},
+	BorderWidth: 2,
+
+	HoverMode: HoverSolid,
+}
+
 // TransparentWidgetStyle is the style for transparent widgets.
 var TransparentWidgetStyle = WidgetStyle{
 	BackgroundNormal: color.RGBA{0, 0, 0, 0},
