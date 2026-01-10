@@ -1,3 +1,29 @@
+// Package ui contains reusable UI widgets and views rendered with Ebiten.
+//
+// File: player_card_view.go
+//
+// Project: GoTicTacToe
+// Authors:
+//   - Alexandre Schmid <alexandre.schmid@edu.heia-fr.ch>
+//   - Jeremy Prin <jeremy.prin@edu.heia-fr.ch>
+//
+// Date: 09 January 2026
+//
+// Copyright:
+//
+//	Copyright (c) 2026 HEIA-FR / ISC
+//	Haute école d'ingénierie et d'architecture de Fribourg
+//	Informatique et Systèmes de Communication
+//
+// License:
+//
+//	SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// Description:
+//
+//	This file implements PlayerCardView, a UI widget used in the setup screen
+//	to display player information (name, role, symbol, color) and offer small
+//	interactions (clicking the symbol area to cycle colors, etc.).
 package ui
 
 import (
@@ -13,6 +39,50 @@ import (
 // cardSymbolCache stores pre-rendered symbol images to avoid regenerating them.
 var cardSymbolCache = map[assets.SymbolType]*ebiten.Image{}
 
+// PlayerCardView constants (layout and visuals).
+const (
+
+	// Card background.
+	cardCornerRadiusPx = 14
+
+	// Card background fill (RGBA).
+	cardBgR = 24
+	cardBgG = 34
+	cardBgB = 58
+	cardBgA = 230
+
+	// Accent strip.
+	accentStripHeightPx = 14
+	accentStripAlpha    = 210
+
+	// Text layout ratios.
+	cardPaddingXRatio  = 0.05
+	cardTitleYRatio    = 0.14
+	cardSubtitleYRatio = 0.29
+
+	// Symbol layout ratios.
+	cardIconSizeRatio = 0.35
+	cardIconYRatio    = 0.40
+
+	// Subtitle text color.
+	subtitleTextR = 180
+	subtitleTextG = 200
+	subtitleTextB = 230
+	subtitleTextA = 255
+
+	// Center label color.
+	centerLabelTextR = 210
+	centerLabelTextG = 230
+	centerLabelTextB = 255
+	centerLabelTextA = 255
+)
+
+// Ready button labels.
+const (
+	readyLabel    = "Ready"
+	notReadyLabel = "Not Ready"
+)
+
 // PlayerCardConfig holds the configuration data for updating a player card.
 // This struct is used to pass player state from the setup screen to the card.
 type PlayerCardConfig struct {
@@ -24,6 +94,7 @@ type PlayerCardConfig struct {
 }
 
 // PlayerCardView is a widget that displays player information in a card format.
+//
 // It shows the player's name, role, symbol, and color, with interactive elements
 // for symbol selection and ready state.
 type PlayerCardView struct {
@@ -44,8 +115,9 @@ type PlayerCardView struct {
 }
 
 // NewPlayerCard creates a new player card widget at the specified position and size.
-// The card includes a rounded background and an accent strip that will be colored
-// based on the player's color.
+//
+// The card includes a rounded background and an accent strip that will be filled
+// with the player's color during Draw.
 func NewPlayerCard(
 	offsetX, offsetY, width, height float64,
 	anchor utils.Anchor,
@@ -59,28 +131,35 @@ func NewPlayerCard(
 			Anchor:  anchor,
 		},
 	}
-	// Create the rounded rectangle background
-	card.image = utils.CreateRoundedRect(int(width), int(height), 14, color.RGBA{R: 24, G: 34, B: 58, A: 230})
-	// Create the accent strip (will be filled with player color during draw)
-	card.accentStrip = ebiten.NewImage(int(width), 14)
+
+	// Create the rounded rectangle background.
+	card.image = utils.CreateRoundedRect(
+		int(width), int(height),
+		cardCornerRadiusPx,
+		color.RGBA{R: cardBgR, G: cardBgG, B: cardBgB, A: cardBgA},
+	)
+
+	// Create the accent strip (filled with player color during draw).
+	card.accentStrip = ebiten.NewImage(int(width), accentStripHeightPx)
+
 	return card
 }
 
 // Update handles input events for the player card.
 // Currently only handles symbol click detection when the symbol is visible.
 func (c *PlayerCardView) Update() {
-	// Skip if showing center label or no click handler
+	// Skip if showing center label or no click handler.
 	if c.ShowCenterLabel || c.OnSymbolClick == nil {
 		return
 	}
 
-	// Check for mouse click release
+	// Check for mouse click release.
 	if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		rect := c.LayoutRect()
 		iconX, iconY, iconSize := c.symbolRect(rect)
 		mx, my := ebiten.CursorPosition()
 
-		// Check if click is within symbol bounds
+		// Check if click is within symbol bounds.
 		if float64(mx) >= iconX && float64(mx) <= iconX+iconSize &&
 			float64(my) >= iconY && float64(my) <= iconY+iconSize {
 			c.OnSymbolClick()
@@ -89,11 +168,16 @@ func (c *PlayerCardView) Update() {
 }
 
 // Draw renders the player card to the screen.
-// The card consists of: background, accent strip, title/subtitle text, and symbol.
+//
+// The card consists of:
+// - background
+// - accent strip
+// - title/subtitle text
+// - symbol (or a centered label when ShowCenterLabel is true)
 func (c *PlayerCardView) Draw(screen *ebiten.Image) {
 	rect := c.LayoutRect()
 
-	// Draw the card background
+	// Draw the card background.
 	if c.image != nil {
 		op := &ebiten.DrawImageOptions{}
 		scaleX := rect.Width / float64(c.image.Bounds().Dx())
@@ -103,36 +187,39 @@ func (c *PlayerCardView) Draw(screen *ebiten.Image) {
 		screen.DrawImage(c.image, op)
 	}
 
-	// If showing center label, draw only that and return
+	// If showing center label, draw only that and return.
 	if c.ShowCenterLabel {
 		c.drawCenterLabel(screen, rect)
 		return
 	}
 
-	// Draw the colored accent strip at the top
+	// Draw the colored accent strip at the top.
 	if c.accentStrip != nil {
 		accent := c.colorOr(color.White)
 		accentRGBA := color.RGBAModel.Convert(accent).(color.RGBA)
-		accentRGBA.A = 210
+		accentRGBA.A = accentStripAlpha
+
 		c.accentStrip.Fill(accentRGBA)
+
 		op := &ebiten.DrawImageOptions{}
 		op.GeoM.Translate(rect.X, rect.Y)
 		screen.DrawImage(c.accentStrip, op)
 	}
 
-	// Draw title and subtitle text
+	// Draw title and subtitle text.
 	c.drawText(screen, rect)
-	// Draw the player's symbol
+
+	// Draw the player's symbol.
 	c.drawSymbol(screen, rect)
 }
 
 // drawText renders the title and subtitle text on the card.
 func (c *PlayerCardView) drawText(screen *ebiten.Image, rect utils.LayoutRect) {
-	paddingX := rect.Width * 0.05
-	titleY := rect.Y + rect.Height*0.14
-	subtitleY := rect.Y + rect.Height*0.29
+	paddingX := rect.Width * cardPaddingXRatio
+	titleY := rect.Y + rect.Height*cardTitleYRatio
+	subtitleY := rect.Y + rect.Height*cardSubtitleYRatio
 
-	// Draw title (player name)
+	// Draw title (player name).
 	if c.Title != "" {
 		titleOpts := &text.DrawOptions{}
 		titleOpts.PrimaryAlign = text.AlignStart
@@ -142,12 +229,14 @@ func (c *PlayerCardView) drawText(screen *ebiten.Image, rect utils.LayoutRect) {
 		text.Draw(screen, c.Title, assets.NormalFont, titleOpts)
 	}
 
-	// Draw subtitle (role description)
+	// Draw subtitle (role description).
 	if c.Subtitle != "" {
 		subOpts := &text.DrawOptions{}
 		subOpts.PrimaryAlign = text.AlignStart
 		subOpts.SecondaryAlign = text.AlignCenter
-		subOpts.ColorScale.ScaleWithColor(color.RGBA{R: 180, G: 200, B: 230, A: 255})
+		subOpts.ColorScale.ScaleWithColor(color.RGBA{
+			R: subtitleTextR, G: subtitleTextG, B: subtitleTextB, A: subtitleTextA,
+		})
 		subOpts.GeoM.Translate(rect.X+paddingX, subtitleY)
 		text.Draw(screen, c.Subtitle, assets.NormalFont, subOpts)
 	}
@@ -167,7 +256,7 @@ func (c *PlayerCardView) drawSymbol(screen *ebiten.Image, rect utils.LayoutRect)
 		return
 	}
 
-	// Scale to fit within the icon size while maintaining aspect ratio
+	// Scale to fit within the icon size while maintaining aspect ratio.
 	scale := iconSize / srcH
 	if srcW > srcH {
 		scale = iconSize / srcW
@@ -178,6 +267,7 @@ func (c *PlayerCardView) drawSymbol(screen *ebiten.Image, rect utils.LayoutRect)
 	symOp.GeoM.Scale(scale, scale)
 	symOp.GeoM.Translate(iconX, iconY)
 	symOp.ColorScale.ScaleWithColor(c.colorOr(color.White))
+
 	screen.DrawImage(img, symOp)
 }
 
@@ -192,17 +282,19 @@ func (c *PlayerCardView) drawCenterLabel(screen *ebiten.Image, rect utils.Layout
 	opts := &text.DrawOptions{}
 	opts.PrimaryAlign = text.AlignCenter
 	opts.SecondaryAlign = text.AlignCenter
-	opts.ColorScale.ScaleWithColor(color.RGBA{R: 210, G: 230, B: 255, A: 255})
-	opts.GeoM.Translate(rect.X+rect.Width/2, rect.Y+rect.Height/2)
+	opts.ColorScale.ScaleWithColor(color.RGBA{
+		R: centerLabelTextR, G: centerLabelTextG, B: centerLabelTextB, A: centerLabelTextA,
+	})
+	opts.GeoM.Translate(rect.X+rect.Width*half, rect.Y+rect.Height*half)
 	text.Draw(screen, label, assets.NormalFont, opts)
 }
 
 // symbolRect calculates the position and size of the symbol area within the card.
 // Returns (x, y, size) where size is used for both width and height.
 func (c *PlayerCardView) symbolRect(rect utils.LayoutRect) (float64, float64, float64) {
-	iconSize := rect.Height * 0.35
-	iconX := rect.X + (rect.Width-iconSize)/2
-	iconY := rect.Y + rect.Height*0.4
+	iconSize := rect.Height * cardIconSizeRatio
+	iconX := rect.X + (rect.Width-iconSize)*half
+	iconY := rect.Y + rect.Height*cardIconYRatio
 	return iconX, iconY, iconSize
 }
 
@@ -234,13 +326,13 @@ func (c *PlayerCardView) UpdateFromConfig(cfg PlayerCardConfig) {
 	c.Color = cfg.Color
 	c.ShowCenterLabel = false
 
-	// Update the ready button if one is associated
+	// Update the ready button if one is associated.
 	if c.ReadyButton != nil {
 		if cfg.Ready {
-			c.ReadyButton.Label = "Ready"
+			c.ReadyButton.Label = readyLabel
 			c.ReadyButton.Style = utils.SuccessWidgetStyle
 		} else {
-			c.ReadyButton.Label = "Not Ready"
+			c.ReadyButton.Label = notReadyLabel
 			c.ReadyButton.Style = utils.DefaultWidgetStyle
 		}
 	}

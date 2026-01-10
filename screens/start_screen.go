@@ -10,6 +10,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// StartScreen is the main menu screen.
+//
+// It displays the game logo and provides buttons to start a match quickly
+// or open the customization setup.
 type StartScreen struct {
 	host       ScreenHost
 	buttons    []*ui.Button
@@ -17,6 +21,7 @@ type StartScreen struct {
 	background *ebiten.Image
 }
 
+// Button and layout constants.
 const (
 	buttonWidth      = float64(200)
 	buttonHeight     = float64(64)
@@ -27,6 +32,35 @@ const (
 	buttonPaneHeight = float64(200)
 )
 
+// Start screen layout / styling constants.
+const (
+	// containerCornerRadiusPx is the corner radius of the button container.
+	containerCornerRadiusPx = 12
+
+	// containerPaddingPx is the padding applied inside the button container.
+	containerPaddingPx = 12
+
+	// half is used for centering computations (equivalent to dividing by 2).
+	half = 0.5
+)
+
+// Visual constants for the start screen.
+const (
+	// logoTargetWidthRatio defines the portion of the screen width the logo should occupy.
+	logoTargetWidthRatio = 0.5
+
+	// logoVerticalBias controls how high the logo is placed (relative to vertical center).
+	// 0.5 would be center; smaller values move it upwards.
+	logoVerticalBias = 0.4
+)
+
+// Background gradient colors.
+var (
+	startBgTopColor    = color.RGBA{R: 0x1C, G: 0x25, B: 0x41, A: 0xFF}
+	startBgBottomColor = color.RGBA{R: 0x0B, G: 0x13, B: 0x2B, A: 0xFF}
+)
+
+// NewStartScreen constructs the start screen and its navigation buttons.
 func NewStartScreen(h ScreenHost) *StartScreen {
 	s := &StartScreen{host: h}
 
@@ -34,10 +68,10 @@ func NewStartScreen(h ScreenHost) *StartScreen {
 		0, buttonYOffset,
 		buttonPaneWidth, buttonPaneHeight,
 		uiutils.AnchorCenter,
-		12,
+		containerCornerRadiusPx,
 		uiutils.TransparentWidgetStyle,
 	)
-	s.buttonPane.Padding = uiutils.InsetsAll(12)
+	s.buttonPane.Padding = uiutils.InsetsAll(containerPaddingPx)
 
 	s.buttons = []*ui.Button{
 		ui.NewButton("Quick Local", -buttonWidth-buttonSpacing, 0, uiutils.AnchorCenter,
@@ -59,9 +93,7 @@ func NewStartScreen(h ScreenHost) *StartScreen {
 			},
 		),
 
-		ui.NewButton(
-			"Customize",
-			buttonWidth+buttonSpacing, 0,
+		ui.NewButton("Customize", buttonWidth+buttonSpacing, 0,
 			uiutils.AnchorCenter,
 			buttonWidth, buttonHeight, buttonRadius,
 			uiutils.DefaultWidgetStyle,
@@ -77,30 +109,31 @@ func NewStartScreen(h ScreenHost) *StartScreen {
 	return s
 }
 
+// Update updates UI interactions for the start screen.
 func (s *StartScreen) Update() error {
 	s.buttonPane.Update()
 	return nil
 }
 
+// Draw renders the background, logo, and buttons.
 func (s *StartScreen) Draw(screen *ebiten.Image) {
 	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
+
+	// Create and cache gradient background.
 	if s.background == nil {
-		topColor := color.RGBA{R: 0x1C, G: 0x25, B: 0x41, A: 0xFF}
-		bottomColor := color.RGBA{R: 0x0B, G: 0x13, B: 0x2B, A: 0xFF}
-		s.background = uiutils.CreateGradientBackground(w, h, topColor, bottomColor)
+		s.background = uiutils.CreateGradientBackground(w, h, startBgTopColor, startBgBottomColor)
 	}
 	screen.DrawImage(s.background, nil)
 
+	// Draw logo.
 	logo := assets.Logo
 	origLogoW := float64(logo.Bounds().Dx())
 	origLogoH := float64(logo.Bounds().Dy())
 
 	op := &ebiten.DrawImageOptions{}
-
 	op.Filter = ebiten.FilterLinear
 
-	targetWidth := float64(w) * 0.5
-
+	targetWidth := float64(w) * logoTargetWidthRatio
 	scaleFactor := targetWidth / origLogoW
 
 	op.GeoM.Scale(scaleFactor, scaleFactor)
@@ -108,13 +141,12 @@ func (s *StartScreen) Draw(screen *ebiten.Image) {
 	scaledLogoW := origLogoW * scaleFactor
 	scaledLogoH := origLogoH * scaleFactor
 
-	posX := (float64(w) - scaledLogoW) / 2
-	posY := (float64(h) - scaledLogoH) / 2 * 0.4
+	posX := (float64(w) - scaledLogoW) * half
+	posY := (float64(h) - scaledLogoH) * half * logoVerticalBias
 
 	op.GeoM.Translate(posX, posY)
-
 	screen.DrawImage(logo, op)
 
-	// Buttons
+	// Draw buttons.
 	s.buttonPane.Draw(screen)
 }

@@ -26,20 +26,48 @@ type GameScreen struct {
 }
 
 const (
-	boardPixelSize   = 480.0 // Board visual size in pixels
+	// Minimum allowed board dimension. The UI/gameplay expects at least 3x3.
+	minBoardDimension = 3
+
+	// Board visual size in pixels.
+	boardPixelSize = 480.0
+
+	// Score view size in pixels.
 	scorePixelWidth  = 300
 	scorePixelHeight = 80
+
+	// Sentinel for "no move".
+	noMoveCoord = -1
+
+	// Number of frames a key must be held to trigger global action.
+	keyHoldFramesToTrigger = 60
+
+	// Opaque alpha channel value.
+	colorAlphaOpaque = 255
+)
+
+var (
+	// Color used for the end-of-game message (yellow).
+	endMessageColor = color.RGBA{R: 255, G: 255, B: 0, A: colorAlphaOpaque}
+
+	// Default colors used when player config does not define a color.
+	defaultPlayerColors = []color.Color{
+		color.RGBA{R: 255, G: 99, B: 132, A: colorAlphaOpaque},
+		color.RGBA{R: 54, G: 162, B: 235, A: colorAlphaOpaque},
+		color.RGBA{R: 75, G: 192, B: 192, A: colorAlphaOpaque},
+		color.RGBA{R: 255, G: 206, B: 86, A: colorAlphaOpaque},
+	}
 )
 
 // NewGameScreen initializes a new GameScreen with a fresh game and board view.
 func NewGameScreen(h ScreenHost, cfg GameConfig) *GameScreen {
 	boardWidth := cfg.BoardWidth
-	if boardWidth < 3 {
-		boardWidth = 3
+	if boardWidth < minBoardDimension {
+		boardWidth = minBoardDimension
 	}
 	boardHeight := cfg.BoardHeight
-	if boardHeight < 3 {
-		boardHeight = 3
+	if boardHeight < minBoardDimension {
+		boardHeight = minBoardDimension
 	}
 
 	// ToWin must be <= smallest dimension
@@ -81,7 +109,6 @@ func NewGameScreen(h ScreenHost, cfg GameConfig) *GameScreen {
 
 // Update processes input and updates UI components.
 func (gs *GameScreen) Update() error {
-
 	// Handle AI board interactions
 	if gs.game.State == game.PLAYING {
 		current := gs.game.Current
@@ -89,11 +116,10 @@ func (gs *GameScreen) Update() error {
 			model := gs.playerAI[current]
 			if model != nil {
 				x, y := model.NextMove(gs.game.Board, current, gs.game.Players)
-				if x >= 0 && y >= 0 {
+				if x >= 0 && y >= 0 && x != noMoveCoord && y != noMoveCoord {
 					gs.game.PlayMove(x, y)
 				}
 			}
-
 			return nil // skip human input this frame
 		}
 	}
@@ -109,10 +135,10 @@ func (gs *GameScreen) Update() error {
 	}
 
 	// Global hotkeys
-	if inpututil.KeyPressDuration(ebiten.KeyEscape) == 60 {
+	if inpututil.KeyPressDuration(ebiten.KeyEscape) == keyHoldFramesToTrigger {
 		os.Exit(0)
 	}
-	if inpututil.KeyPressDuration(ebiten.KeyR) == 60 {
+	if inpututil.KeyPressDuration(ebiten.KeyR) == keyHoldFramesToTrigger {
 		gs.game.Reset()
 		gs.game.ResetPoints()
 	}
@@ -148,8 +174,7 @@ func (gs *GameScreen) drawEndMessage(screen *ebiten.Image) {
 	sw, sh := screen.Bounds().Dx(), screen.Bounds().Dy()
 	opts.GeoM.Translate(float64(sw)/2, float64(sh)/2)
 
-	opts.ColorScale.ScaleWithColor(color.RGBA{255, 255, 0, 255})
-
+	opts.ColorScale.ScaleWithColor(endMessageColor)
 	text.Draw(screen, msg, assets.BigFont, opts)
 }
 
@@ -158,13 +183,6 @@ func (gs *GameScreen) drawEndMessage(screen *ebiten.Image) {
 func buildPlayers(cfg GameConfig) ([]*game.Player, map[*game.Player]ai_models.AIModel) {
 	var players []*game.Player
 	aiByPlayer := map[*game.Player]ai_models.AIModel{}
-
-	defaultColors := []color.Color{
-		color.RGBA{R: 255, G: 99, B: 132, A: 255},
-		color.RGBA{R: 54, G: 162, B: 235, A: 255},
-		color.RGBA{R: 75, G: 192, B: 192, A: 255},
-		color.RGBA{R: 255, G: 206, B: 86, A: 255},
-	}
 
 	readyCount := 0
 	for _, pc := range cfg.Players {
@@ -181,7 +199,7 @@ func buildPlayers(cfg GameConfig) ([]*game.Player, map[*game.Player]ai_models.AI
 
 		c := pc.Color
 		if c == nil {
-			c = defaultColors[colorIdx%len(defaultColors)]
+			c = defaultPlayerColors[colorIdx%len(defaultPlayerColors)]
 		}
 		colorIdx++
 
@@ -207,8 +225,8 @@ func buildPlayers(cfg GameConfig) ([]*game.Player, map[*game.Player]ai_models.AI
 
 	if len(players) == 0 {
 		players = []*game.Player{
-			game.NewPlayer(assets.NewSymbol(assets.CircleSymbol), defaultColors[0]),
-			game.NewPlayer(assets.NewSymbol(assets.CrossSymbol), defaultColors[1]),
+			game.NewPlayer(assets.NewSymbol(assets.CircleSymbol), defaultPlayerColors[0]),
+			game.NewPlayer(assets.NewSymbol(assets.CrossSymbol), defaultPlayerColors[1]),
 		}
 		for i, p := range players {
 			p.Name = fmt.Sprintf("Player %d", i+1)

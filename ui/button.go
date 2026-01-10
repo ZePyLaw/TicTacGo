@@ -1,3 +1,28 @@
+// Package ui contains reusable UI widgets and views rendered with Ebiten.
+//
+// File: button.go
+//
+// Project: GoTicTacToe
+// Authors:
+//   - Alexandre Schmid <alexandre.schmid@edu.heia-fr.ch>
+//   - Jeremy Prin <jeremy.prin@edu.heia-fr.ch>
+//
+// Date: 09 January 2026
+//
+// Copyright:
+//
+//	Copyright (c) 2026 HEIA-FR / ISC
+//	Haute école d'ingénierie et d'architecture de Fribourg
+//	Informatique et Systèmes de Communication
+//
+// License:
+//
+//	SPDX-License-Identifier: MIT OR Apache-2.0
+//
+// Description:
+//
+//	This file implements a clickable Button widget with hover effects and
+//	centered label rendering.
 package ui
 
 import (
@@ -9,8 +34,22 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
+// Button rendering and layout constants.
+const (
+	// one is used for default scaling (no scale).
+	one = 1.0
+
+	// half is used for centering computations (equivalent to dividing by 2).
+	half = 0.5
+
+	// defaultLineSpacingPx is the line spacing used when drawing the label.
+	defaultLineSpacingPx = 20
+)
+
 // Button represents a UI button with a label, hover animation, and click handler.
-// It embeds Widget, so all Widget fields and methods are promoted and accessible directly.
+//
+// It embeds Widget, so all Widget fields and methods are promoted and accessible
+// directly. It also embeds utils.Hoverable to implement hover animations/effects.
 type Button struct {
 	Widget                  // Embedded base widget
 	Label            string // Text displayed on the button
@@ -19,6 +58,8 @@ type Button struct {
 }
 
 // NewButton creates and returns a new Button instance.
+//
+// The background is pre-rendered as a rounded rectangle for efficiency.
 func NewButton(
 	label string,
 	offsetX, offsetY float64,
@@ -28,8 +69,7 @@ func NewButton(
 	style utils.WidgetStyle,
 	onClick func(),
 ) *Button {
-
-	// Pre-render the button background (rounded rectangle)
+	// Pre-render the button background (rounded rectangle).
 	bg := utils.CreateRoundedRect(
 		int(width), int(height),
 		radius, style.BackgroundNormal,
@@ -58,12 +98,13 @@ func (b *Button) Update() {
 }
 
 // UpdateAt runs hover + click handling at an explicit screen position.
+//
 // Useful when the button is drawn inside a translated container.
 func (b *Button) UpdateAt(x, y float64) {
 	width, height := b.LayoutSize()
 	b.Hoverable.Update(x, y, width, height)
 
-	// Handle click events
+	// Handle click events.
 	if b.IsHovered() && inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
 		if b.onClick != nil {
 			b.onClick()
@@ -84,13 +125,15 @@ func (b *Button) SetStyle(style utils.WidgetStyle, radius float64) {
 }
 
 // DrawAt renders the button at an explicit position without recomputing layout.
+//
 // Useful when nesting the button inside a container that manages its own origin.
 func (b *Button) DrawAt(screen *ebiten.Image, x, y float64) {
 	width, height := b.LayoutSize()
 	srcW := float64(b.image.Bounds().Dx())
 	srcH := float64(b.image.Bounds().Dy())
-	scaleX := 1.0
-	scaleY := 1.0
+
+	scaleX := one
+	scaleY := one
 	if srcW != 0 {
 		scaleX = width / srcW
 	}
@@ -98,23 +141,24 @@ func (b *Button) DrawAt(screen *ebiten.Image, x, y float64) {
 		scaleY = height / srcH
 	}
 
-	// --- Draw background ---
+	// Draw background.
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(scaleX, scaleY)
 	op.GeoM.Translate(x, y)
 
-	// Apply interactive hover color effect
+	// Apply interactive hover color effect.
 	b.ApplyHoverColor(op, b.Style)
 
 	screen.DrawImage(b.image, op)
 
-	// --- Draw text ---
+	// Draw text.
 	opts := &text.DrawOptions{}
 	opts.PrimaryAlign = text.AlignCenter
 	opts.SecondaryAlign = text.AlignCenter
-	opts.LineSpacing = 20
-	// Center the text inside the button
-	opts.GeoM.Translate(x+width/2, y+height/2)
+	opts.LineSpacing = defaultLineSpacingPx
+
+	// Center the text inside the button.
+	opts.GeoM.Translate(x+width*half, y+height*half)
 	opts.ColorScale.ScaleWithColor(b.Style.TextColor)
 
 	text.Draw(screen, b.Label, assets.NormalFont, opts)
